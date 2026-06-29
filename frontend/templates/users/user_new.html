@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% set active_page = "users" %}
+
+{% block title %}Add User{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12.5px; color: #64748B; text-decoration: none;
+        margin-bottom: 18px; transition: color 0.15s;
+    }
+    .back-link:hover { color: #0A1931; }
+    .form-actions {
+        display: flex; gap: 12px; justify-content: flex-end;
+        padding-top: 14px; border-top: 1px solid #E2E8F0;
+    }
+    .multi-select-wrap {
+        border: 1px solid #E2E8F0; border-radius: 8px;
+        background: #fff; max-height: 140px; overflow-y: auto; padding: 6px 0;
+    }
+    .multi-select-wrap label {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 14px; font-size: 13px; color: #334155;
+        cursor: pointer; transition: background 0.1s;
+        text-transform: none; letter-spacing: 0; font-weight: 400;
+    }
+    .multi-select-wrap label:hover { background: #F8FAFC; }
+    .multi-select-wrap input[type=checkbox] { accent-color: #0A1931; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a href="/users" class="back-link">
+    <i class="bi bi-arrow-left"></i> Back to Users
+</a>
+
+<div class="page-header">
+    <div>
+        <h1>Add User</h1>
+        <p>Create a new user account and assign access</p>
+    </div>
+</div>
+
+<form method="POST" action="/users/new" id="userForm" style="max-width:780px;">
+
+    <div class="panel">
+        <div class="form-divider">Account Details</div>
+        <div class="form-grid cols-3">
+
+            <div class="form-group">
+                <label class="form-label-dt">Full Name *</label>
+                <input type="text" name="userName" class="form-control-dt"
+                       placeholder="e.g. Riya Sharma" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Email Address *</label>
+                <input type="email" name="emailAddress" class="form-control-dt"
+                       placeholder="e.g. riya@nokia.com" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Mobile</label>
+                <input type="text" name="mobile" class="form-control-dt"
+                       placeholder="e.g. +91 98765 43210">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Password *</label>
+                <input type="password" name="userPassword" class="form-control-dt"
+                       placeholder="Set initial password" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Role *</label>
+                <select name="roleVal" class="form-control-dt" required>
+                    <option value="0">User</option>
+                    <option value="1">Admin</option>
+                    <option value="super">Super Admin</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Status</label>
+                <select name="isActive" class="form-control-dt">
+                    <option value="1" selected>Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="form-divider">Access Control</div>
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label class="form-label-dt">Division Access</label>
+                <div class="multi-select-wrap">
+                    {% for d in divisions %}
+                    <label>
+                        <input type="checkbox" name="divisionIDs" value="{{ d.divisionID }}">
+                        {{ d.divisionName }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Customer Access
+                    <span style="font-weight:400;color:#94A3B8;font-size:10px;margin-left:6px;">
+                        (leave blank = all customers)
+                    </span>
+                </label>
+                <div class="multi-select-wrap">
+                    {% for c in customers %}
+                    <label>
+                        <input type="checkbox" name="customerIDs" value="{{ c.customerID }}">
+                        {{ c.customerName }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/users" class="btn-outline-dt">Cancel</a>
+        <button type="submit" class="btn-primary-dt">
+            <i class="bi bi-person-check"></i> Create User
+        </button>
+    </div>
+
+</form>
+{% endblock %}

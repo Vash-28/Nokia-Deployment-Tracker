@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Milestone Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #F8FAFC; color: #0F172A; }
+
+        .app-layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+
+        /* FIX: content must fill full width */
+        .content { flex: 1; min-width: 0; padding: 28px; }
+
+        .page-header { margin-bottom: 24px; }
+        .page-header h1 { font-size: 22px; font-weight: 600; color: #0F172A; }
+        .page-header p { font-size: 13px; color: #64748B; margin-top: 3px; }
+
+        /* SELECTOR CARD */
+        .selector-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+        .selector-card h2 { font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 16px; }
+        .selector-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+        .field-group label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #94A3B8; display: block; margin-bottom: 6px; }
+        .field-group select {
+            width: 100%; border: 1px solid #E2E8F0; border-radius: 8px;
+            padding: 9px 14px; font-size: 13px; color: #334155; background: #fff;
+            outline: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394A3B8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+        }
+        .field-group select:focus { border-color: #1A56DB; }
+        .field-group select:disabled { background-color: #F8FAFC; color: #94A3B8; cursor: not-allowed; }
+        .btn-load { background: #124191; color: #fff; border: none; border-radius: 8px; padding: 9px 22px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; height: 40px; display: flex; align-items: center; gap: 6px; }
+        .btn-load:hover { background: #1A56DB; }
+        .btn-load:disabled { background: #94A3B8; cursor: not-allowed; }
+
+        /* OPP INFO BAR */
+        .opp-info-bar { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 20px; margin-bottom: 20px; display: none; align-items: center; gap: 24px; flex-wrap: wrap; }
+        .opp-info-bar.show { display: flex; }
+        .info-item .lbl { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #1D4ED8; }
+        .info-item .val { font-size: 13px; font-weight: 500; color: #1E3A8A; }
+        .info-divider { width: 1px; height: 32px; background: #BFDBFE; }
+        .po-qty-badge { background: #1A56DB; color: #fff; border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; margin-left: auto; }
+
+        /* ACTION ROW */
+        .action-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+        .btn-plan { background: #059669; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-plan:hover { background: #047857; }
+        .btn-actual { background: #1A56DB; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-actual:hover { background: #124191; }
+        .btn-export { background: #fff; color: #334155; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 18px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-export:hover { background: #F8FAFC; }
+        .month-badge { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 8px; padding: 6px 14px; font-size: 12px; color: #92400E; margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+        /* TIMELINE CONTAINER */
+        .timeline-container { display: none; }
+        .timeline-container.show { display: block; }
+
+        /* PROGRESS RAIL */
+        .progress-rail { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; overflow-x: auto; }
+        .progress-rail h3 { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 16px; }
+        .month-rail { display: flex; gap: 0; align-items: stretch; min-width: max-content; }
+        .month-node { display: flex; flex-direction: column; align-items: center; min-width: 80px; position: relative; }
+        .month-node::before { content: ''; position: absolute; top: 14px; left: 50%; right: -50%; height: 2px; background: #E2E8F0; z-index: 0; }
+        .month-node:last-child::before { display: none; }
+        .month-dot { width: 28px; height: 28px; border-radius: 50%; background: #E2E8F0; border: 2px solid #CBD5E1; display: flex; align-items: center; justify-content: center; font-size: 10px; z-index: 1; position: relative; }
+        .month-dot.past { background: #DCFCE7; border-color: #059669; }
+        .month-dot.current { background: #1A56DB; border-color: #1A56DB; }
+        .month-dot.future { background: #F1F5F9; border-color: #CBD5E1; }
+        .month-dot.past i { color: #059669; font-size: 11px; }
+        .month-dot.current i { color: #fff; font-size: 11px; }
+        .month-label { font-size: 10px; color: #64748B; margin-top: 6px; font-weight: 500; }
+        .month-label.current { color: #1A56DB; font-weight: 700; }
+
+        /* MILESTONE GRID */
+        .milestone-grid { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .milestone-grid-header { display: grid; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; padding: 10px 20px; gap: 8px; align-items: center; }
+        .grid-header-cell { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; text-align: center; }
+        .grid-header-cell.left { text-align: left; }
+
+        .milestone-group { border-bottom: 1px solid #F1F5F9; }
+        .milestone-group:last-child { border-bottom: none; }
+        .milestone-group-label { padding: 8px 20px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #94A3B8; background: #FAFAFA; }
+
+        .milestone-row { display: grid; padding: 10px 20px; gap: 8px; align-items: center; border-bottom: 1px solid #F8FAFC; transition: background 0.1s; }
+        .milestone-row:hover { background: #FAFAFE; }
+        .milestone-row:last-child { border-bottom: none; }
+
+        .ms-name { font-size: 12px; color: #334155; line-height: 1.4; }
+        .ms-name .ms-id { font-size: 10px; font-weight: 600; color: #94A3B8; display: block; }
+        .ms-scope { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; margin-top: 3px; }
+        .scope-nokia { background: #DCFCE7; color: #166534; }
+        .scope-customer { background: #DBEAFE; color: #1E40AF; }
+
+        .month-cell { display: flex; gap: 4px; align-items: center; justify-content: center; }
+        .qty-box { display: flex; flex-direction: column; align-items: center; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px 8px; min-width: 52px; cursor: default; }
+        .qty-box.nokia { border-color: #86EFAC; background: #F0FDF4; }
+        .qty-box.customer { border-color: #BFDBFE; background: #EFF6FF; }
+        .qty-box.editable { cursor: pointer; }
+        .qty-box.editable:hover { border-color: #1A56DB; box-shadow: 0 0 0 2px rgba(26,86,219,0.12); }
+        .qty-plan { font-size: 11px; font-weight: 600; color: #059669; }
+        .qty-actual { font-size: 11px; font-weight: 600; color: #1A56DB; }
+        .qty-lbl { font-size: 9px; color: #94A3B8; }
+        .qty-empty { font-size: 11px; color: #CBD5E1; }
+        .qty-variance { font-size: 9px; }
+        .qty-variance.over { color: #DC2626; }
+        .qty-variance.on { color: #059669; }
+
+        /* LEGEND */
+        .legend { display: flex; gap: 16px; align-items: center; padding: 12px 20px; border-top: 1px solid #F1F5F9; background: #FAFAFA; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748B; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; padding: 60px 20px; color: #94A3B8; }
+        .empty-state i { font-size: 40px; display: block; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        /* MODAL */
+        .overlay-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.4); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .overlay-backdrop.show { display: flex; }
+        .overlay-modal { background: #fff; border-radius: 16px; width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.2s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; justify-content: space-between; }
+        .modal-header h3 { font-size: 16px; font-weight: 600; color: #0F172A; }
+        .modal-header p { font-size: 12px; color: #64748B; margin-top: 2px; }
+        .modal-close { border: none; background: none; cursor: pointer; color: #94A3B8; font-size: 18px; padding: 4px; border-radius: 6px; }
+        .modal-close:hover { background: #F1F5F9; color: #334155; }
+        .modal-body { padding: 20px 24px; }
+        .modal-footer { padding: 16px 24px; border-top: 1px solid #F1F5F9; display: flex; gap: 10px; justify-content: flex-end; }
+
+        .modal-month-info { background: #F0F6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; color: #1E40AF; display: flex; align-items: center; gap: 8px; }
+        .scope-section { margin-bottom: 20px; }
+        .scope-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .scope-title-nokia { color: #059669; }
+        .scope-title-customer { color: #1A56DB; }
+
+        .milestone-input-row { display: grid; grid-template-columns: 1fr 80px; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .milestone-input-label { font-size: 12px; color: #334155; }
+        .milestone-input-label span { font-size: 10px; color: #94A3B8; display: block; }
+        .qty-input { border: 1px solid #E2E8F0; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-weight: 500; text-align: center; outline: none; width: 100%; }
+        .qty-input.nokia-input { border-color: #86EFAC; background: #F0FDF4; color: #166534; }
+        .qty-input.nokia-input:focus { border-color: #059669; }
+        .qty-input.customer-input { border-color: #BFDBFE; background: #EFF6FF; color: #1E40AF; }
+        .qty-input.customer-input:focus { border-color: #1A56DB; }
+
+        .remark-area { border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 14px; font-size: 13px; width: 100%; resize: vertical; min-height: 70px; outline: none; }
+        .remark-area:focus { border-color: #1A56DB; }
+
+        .btn-save { background: #124191; color: #fff; border: none; border-radius: 8px; padding: 9px 24px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .btn-save:hover { background: #1A56DB; }
+        .btn-cancel-modal { background: #fff; color: #64748B; border: 1px solid #E2E8F0; border-radius: 8px; padding: 9px 20px; font-size: 13px; cursor: pointer; }
+        .btn-cancel-modal:hover { background: #F8FAFC; }
+
+        .lock-notice { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400E; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* TOAST */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; font-size: 13px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); animation: toastIn 0.2s ease; min-width: 260px; }
+        .toast.success { border-color: #86EFAC; background: #F0FDF4; color: #166534; }
+        .toast.error { border-color: #FECACA; background: #FFF5F5; color: #991B1B; }
+        @keyframes toastIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* LOADING */
+        .loading-state { text-align: center; padding: 40px; color: #94A3B8; font-size: 13px; }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #E2E8F0; border-top-color: #1A56DB; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="app-layout">
+    {% include 'sidebar.html' %}
+
+    <div class="content">
+        <div class="page-header">
+            <h1>Milestone Tracking</h1>
+            <p>Track planned vs actual deployment quantities per milestone stage.</p>
+        </div>
+
+        <!-- SELECTOR CARD -->
+        <div class="selector-card">
+            <h2>Select Opportunity & Product</h2>
+            <div class="selector-row">
+                <div class="field-group">
+                    <label>Opportunity</label>
+                    <select id="sel-opportunity" onchange="onOpportunityChange()">
+                        <option value="">Select opportunity...</option>
+                        {% for opp in opportunities %}
+                        <option value="{{ opp.opportunityID }}"
+                            data-start="{{ opp.startDate }}"
+                            data-end="{{ opp.endDate or '' }}"
+                            data-name="{{ opp.opportunityName }}">
+                            {{ opp.opportunityName }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>Product</label>
+                    <select id="sel-product" disabled onchange="onProductChange()">
+                        <option value="">Select product...</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label>PO</label>
+                    <select id="sel-po" disabled onchange="onPoChange()">
+                        <option value="">Select PO...</option>
+                    </select>
+                </div>
+                <button class="btn-load" id="btn-load" onclick="loadTimeline()" disabled>
+                    <i class="bi bi-arrow-right-circle"></i> Load
+                </button>
+            </div>
+        </div>
+
+        <!-- OPP INFO BAR -->
+        <div class="opp-info-bar" id="opp-info-bar">
+            <div class="info-item">
+                <div class="lbl">Opportunity</div>
+                <div class="val" id="info-opp-name">—</div>
+            </div>
+            <div class="info-divider"></div>
+            <div class="info-item">
+                <div class="lbl">Timeline</div>
+                <div class="val" id="info-dates">—</div>
+            </div>
+            <div class="info-divider"></div>
+            <div class="info-item">
+                <div class="lbl">Product</div>
+                <div class="val" id="info-product">—</div>
+            </div>
+            <div class="info-divider"></div>
+            <div class="info-item">
+                <div class="lbl">PO</div>
+                <div class="val" id="info-po">—</div>
+            </div>
+            <div class="po-qty-badge" id="info-qty">— units</div>
+        </div>
+
+        <!-- ACTION ROW -->
+        <div class="action-row" id="action-row" style="display:none">
+            <button class="btn-plan" onclick="openPlanModal()">
+                <i class="bi bi-calendar-plus"></i> Plan Next Month
+            </button>
+            <button class="btn-actual" onclick="openActualModal()">
+                <i class="bi bi-check2-circle"></i> Enter Actuals
+            </button>
+            <button class="btn-export" onclick="exportTimeline()">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <div class="month-badge" id="month-badge">
+                <i class="bi bi-calendar3"></i> <span id="current-month-label">—</span>
+            </div>
+        </div>
+
+        <!-- TIMELINE CONTAINER -->
+        <div class="timeline-container" id="timeline-container">
+            <div class="progress-rail">
+                <h3>Deployment Timeline</h3>
+                <div class="month-rail" id="month-rail">
+                    <div class="loading-state"><span class="spinner"></span>Loading...</div>
+                </div>
+            </div>
+
+            <div class="milestone-grid" id="milestone-grid">
+                <div class="loading-state"><span class="spinner"></span>Loading milestones...</div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#DCFCE7;border:1px solid #86EFAC"></div> Nokia Scope — Plan</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#DBEAFE;border:1px solid #BFDBFE"></div> Customer Scope — Plan</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#059669;width:10px;height:10px;border-radius:50%"></div> Actual entered</div>
+                <div class="legend-item"><i class="bi bi-pencil" style="color:#1A56DB;font-size:10px"></i> Click plan/actual cell to edit</div>
+            </div>
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div class="empty-state" id="empty-state">
+            <i class="bi bi-flag"></i>
+            <p>Select an opportunity, product and PO above to view milestone tracking.</p>
+        </div>
+
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- PLAN MODAL -->
+<div class="overlay-backdrop" id="plan-modal">
+    <div class="overlay-modal">
+        <div class="modal-header">
+            <div>
+                <h3><i class="bi bi-calendar-plus" style="color:#059669;margin-right:6px"></i>Plan — <span id="plan-month-title">Next Month</span></h3>
+                <p id="plan-modal-subtitle">Enter planned quantities for each milestone</p>
+            </div>
+            <button class="modal-close" onclick="closeModal('plan-modal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-month-info">
+                <i class="bi bi-info-circle"></i>
+                Planning for <strong id="plan-month-info">—</strong>. Plans lock after the 7th.
+            </div>
+            <div id="plan-inputs"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel-modal" onclick="closeModal('plan-modal')">Cancel</button>
+            <button class="btn-save" onclick="savePlan()"><i class="bi bi-check2"></i> Save Plan</button>
+        </div>
+    </div>
+</div>
+
+<!-- ACTUAL MODAL -->
+<div class="overlay-backdrop" id="actual-modal">
+    <div class="overlay-modal">
+        <div class="modal-header">
+            <div>
+                <h3><i class="bi bi-check2-circle" style="color:#1A56DB;margin-right:6px"></i>Actuals — <span id="actual-month-title">Previous Month</span></h3>
+                <p id="actual-modal-subtitle">Enter actual deployed quantities</p>
+            </div>
+            <button class="modal-close" onclick="closeModal('actual-modal')"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-month-info" style="background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF">
+                <i class="bi bi-info-circle"></i>
+                Entering actuals for <strong id="actual-month-info">—</strong>.
+            </div>
+            <div id="actual-inputs"></div>
+            <div style="margin-top:16px">
+                <label style="font-size:12px;font-weight:500;color:#334155;display:block;margin-bottom:6px">Remark (optional)</label>
+                <textarea class="remark-area" id="actual-remark" placeholder="Explain any variance, delays or notes..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel-modal" onclick="closeModal('actual-modal')">Cancel</button>
+            <button class="btn-save" onclick="saveActual()" style="background:#1A56DB"><i class="bi bi-check2"></i> Save Actuals</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const state = {
+    opportunityID: null,
+    productID: null,
+    poID: null,
+    timelineData: null
+};
+
+// Compute current/plan/actual months client-side (server also sends these, we use server values after load)
+const _now = new Date();
+const _currentMonth = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+const _planDate = new Date(_now.getFullYear(), _now.getMonth()+1, 1);
+const _planMonth = `${_planDate.getFullYear()}-${String(_planDate.getMonth()+1).padStart(2,'0')}`;
+const _actualDate = new Date(_now.getFullYear(), _now.getMonth()-1, 1);
+const _actualMonth = `${_actualDate.getFullYear()}-${String(_actualDate.getMonth()+1).padStart(2,'0')}`;
+const _isPlanLocked = _now.getDate() > 7;
+
+// ═══════════════════════════════════════════════════════
+// URL PARAM PRE-SELECTION (from po_detail "Manage Plans" link)
+// ═══════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const preOpp = params.get('opp');
+    const preProduct = params.get('product');
+
+    if (preOpp) {
+        const oppSel = document.getElementById('sel-opportunity');
+        oppSel.value = preOpp;
+        if (oppSel.value) {
+            onOpportunityChange().then(() => {
+                if (preProduct) {
+                    const prodSel = document.getElementById('sel-product');
+                    prodSel.value = preProduct;
+                    if (prodSel.value) onProductChange();
+                }
+            });
+        }
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// SELECTORS
+// ═══════════════════════════════════════════════════════
+function onOpportunityChange() {
+    const oppSel = document.getElementById('sel-opportunity');
+    const prodSel = document.getElementById('sel-product');
+    const poSel = document.getElementById('sel-po');
+
+    state.opportunityID = oppSel.value || null;
+    state.productID = null;
+    state.poID = null;
+
+    prodSel.innerHTML = '<option value="">Loading...</option>';
+    prodSel.disabled = true;
+    poSel.innerHTML = '<option value="">Select PO...</option>';
+    poSel.disabled = true;
+    document.getElementById('btn-load').disabled = true;
+
+    if (!state.opportunityID) {
+        prodSel.innerHTML = '<option value="">Select product...</option>';
+        return Promise.resolve();
+    }
+
+    return fetch(`/milestone/${state.opportunityID}/products`)
+        .then(r => r.json())
+        .then(data => {
+            prodSel.innerHTML = '<option value="">Select product...</option>';
+            if (data.length === 0) {
+                prodSel.innerHTML = '<option value="">No products found</option>';
+                return;
+            }
+            data.forEach(p => {
+                prodSel.innerHTML += `<option value="${p.productID}">${p.productName}</option>`;
+            });
+            prodSel.disabled = false;
+        });
+}
+
+function onProductChange() {
+    const prodSel = document.getElementById('sel-product');
+    const poSel = document.getElementById('sel-po');
+
+    state.productID = prodSel.value || null;
+    state.poID = null;
+    poSel.innerHTML = '<option value="">Loading...</option>';
+    poSel.disabled = true;
+    document.getElementById('btn-load').disabled = true;
+
+    if (!state.productID || !state.opportunityID) {
+        poSel.innerHTML = '<option value="">Select PO...</option>';
+        return Promise.resolve();
+    }
+
+    return fetch(`/milestone/${state.opportunityID}/${state.productID}/pos`)
+        .then(r => r.json())
+        .then(data => {
+            poSel.innerHTML = '<option value="">Select PO...</option>';
+            if (data.length === 0) {
+                poSel.innerHTML = '<option value="">No POs found</option>';
+                return;
+            }
+            data.forEach(po => {
+                poSel.innerHTML += `<option value="${po.poID}">${po.pOName} (${po.quantity} units)</option>`;
+            });
+            poSel.disabled = false;
+        });
+}
+
+function onPoChange() {
+    const poSel = document.getElementById('sel-po');
+    state.poID = poSel.value || null;
+    document.getElementById('btn-load').disabled = !state.poID;
+}
+
+// ═══════════════════════════════════════════════════════
+// LOAD TIMELINE — FIX: use server-returned months/planMonth/actualMonth
+// ═══════════════════════════════════════════════════════
+function loadTimeline() {
+    if (!state.opportunityID || !state.productID || !state.poID) return;
+
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('timeline-container').classList.add('show');
+    document.getElementById('action-row').style.display = 'flex';
+    document.getElementById('opp-info-bar').classList.add('show');
+
+    // Show loading states
+    document.getElementById('month-rail').innerHTML = '<div class="loading-state"><span class="spinner"></span>Loading...</div>';
+    document.getElementById('milestone-grid').innerHTML = '<div class="loading-state"><span class="spinner"></span>Loading milestones...</div>';
+
+    fetch(`/milestone/${state.opportunityID}/${state.productID}/timeline?po_id=${state.poID}`)
+        .then(r => r.json())
+        .then(data => {
+            state.timelineData = data;
+            // FIX: use server-sent plan/actual months so they match what the backend saves
+            state.currentMonth = data.current_month;
+            state.planMonth = data.plan_month;
+            state.actualMonth = data.actual_month;
+            state.isPlanLocked = data.is_plan_locked;
+
+            renderInfoBar(data);
+            renderMonthRail(data);
+            renderMilestoneGrid(data);
+            updateActionBarLabel();
+        })
+        .catch(() => showToast('Failed to load timeline. Check your connection.', 'error'));
+}
+
+function updateActionBarLabel() {
+    if (!state.planMonth) return;
+    const d = new Date(state.planMonth + '-01');
+    document.getElementById('current-month-label').textContent =
+        `Planning for: ${d.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// INFO BAR
+// ═══════════════════════════════════════════════════════
+function renderInfoBar(data) {
+    document.getElementById('info-opp-name').textContent = data.opportunity.opportunityName;
+    document.getElementById('info-product').textContent = data.product.productName;
+    document.getElementById('info-po').textContent = data.po.pOName;
+    document.getElementById('info-qty').textContent = `${data.po.quantity} units`;
+    const start = fmtMonthYear(data.opportunity.startDate);
+    const end = data.opportunity.endDate ? fmtMonthYear(data.opportunity.endDate) : 'Ongoing';
+    document.getElementById('info-dates').textContent = `${start} → ${end}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MONTH RAIL
+// ═══════════════════════════════════════════════════════
+function renderMonthRail(data) {
+    const rail = document.getElementById('month-rail');
+    rail.innerHTML = data.months.map(m => {
+        const isPast = m < state.currentMonth;
+        const isCurrent = m === state.currentMonth;
+        const label = new Date(m + '-01').toLocaleString('default', { month: 'short', year: '2-digit' });
+        let dotClass = 'future', icon = '';
+        if (isPast) { dotClass = 'past'; icon = '<i class="bi bi-check-lg"></i>'; }
+        if (isCurrent) { dotClass = 'current'; icon = '<i class="bi bi-circle-fill" style="font-size:8px"></i>'; }
+        return `<div class="month-node">
+            <div class="month-dot ${dotClass}">${icon}</div>
+            <div class="month-label ${isCurrent ? 'current' : ''}">${label}</div>
+        </div>`;
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MILESTONE GRID — FIX: show all months (with scroll), highlight current
+// ═══════════════════════════════════════════════════════
+function renderMilestoneGrid(data) {
+    const grid = document.getElementById('milestone-grid');
+    const months = data.months;
+
+    // Show window: 3 months before current through all future months (or full range if short)
+    const currIdx = months.indexOf(state.currentMonth);
+    const winStart = Math.max(0, currIdx - 3);
+    const visibleMonths = months.slice(winStart);
+
+    const colTemplate = `200px repeat(${visibleMonths.length}, minmax(110px, 1fr))`;
+
+    let html = `<div style="overflow-x:auto">
+        <div style="min-width: ${200 + visibleMonths.length * 115}px">
+        <div class="milestone-grid-header" style="grid-template-columns:${colTemplate}">
+            <div class="grid-header-cell left">Milestone</div>
+            ${visibleMonths.map(m => {
+                const label = new Date(m + '-01').toLocaleString('default', { month: 'short', year: '2-digit' });
+                const isCurrent = m === state.currentMonth;
+                const isPlan = m === state.planMonth;
+                const isActual = m === state.actualMonth;
+                let badge = '';
+                if (isCurrent) badge = ' <span style="font-size:8px;color:#1A56DB">●</span>';
+                if (isPlan) badge += ' <span style="font-size:8px;color:#059669;font-weight:700">P</span>';
+                if (isActual) badge += ' <span style="font-size:8px;color:#1A56DB;font-weight:700">A</span>';
+                return `<div class="grid-header-cell" style="${isCurrent ? 'color:#1A56DB;font-weight:700' : ''}">${label}${badge}</div>`;
+            }).join('')}
+        </div>`;
+
+    // Group by milestoneNickname
+    const groups = {};
+    data.milestones.forEach(ms => {
+        const key = ms.milestoneNickname || ms.milestoneName;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(ms);
+    });
+
+    Object.entries(groups).forEach(([groupName, milestones]) => {
+        html += `<div class="milestone-group">`;
+        milestones.forEach(ms => {
+            const isNokia = ms.milestoneType === 1;
+            const scopeClass = isNokia ? 'nokia' : 'customer';
+            const scopeLabel = isNokia ? 'Nokia Scope' : 'Customer Scope';
+            const scopeBadgeClass = isNokia ? 'scope-nokia' : 'scope-customer';
+
+            html += `<div class="milestone-row" style="grid-template-columns:${colTemplate}">
+                <div class="ms-name">
+                    <span class="ms-id">${ms.milestoneDataID || ''}</span>
+                    ${ms.milestoneName}
+                    <div><span class="ms-scope ${scopeBadgeClass}">${scopeLabel}</span></div>
+                </div>
+                ${visibleMonths.map(m => {
+                    const entry = ms.entries[m] || {};
+                    const plan = (entry.plan !== null && entry.plan !== undefined) ? entry.plan : null;
+                    const actual = (entry.actual !== null && entry.actual !== undefined) ? entry.actual : null;
+                    // FIX: use server-returned editability flags
+                    const planEditable = !!entry.planEditable;
+                    const actualEditable = !!entry.actualEditable;
+
+                    let variance = '';
+                    if (plan !== null && actual !== null) {
+                        const diff = actual - plan;
+                        variance = `<div class="qty-variance ${diff < 0 ? 'over' : 'on'}">${diff >= 0 ? '+' : ''}${diff}</div>`;
+                    }
+
+                    return `<div class="month-cell">
+                        <div class="qty-box ${scopeClass} ${planEditable ? 'editable' : ''}"
+                            onclick="${planEditable ? `openPlanModal(${ms.milestoneID})` : ''}"
+                            title="${planEditable ? 'Click to edit plan' : (plan !== null ? 'Plan: ' + plan : 'No plan')}">
+                            <div class="qty-plan">${plan !== null ? plan : '<span class="qty-empty">—</span>'}</div>
+                            <div class="qty-lbl">plan</div>
+                            ${planEditable ? '<i class="bi bi-pencil" style="font-size:8px;color:#94A3B8"></i>' : ''}
+                        </div>
+                        <div class="qty-box ${scopeClass} ${actualEditable ? 'editable' : ''}"
+                            onclick="${actualEditable ? `openActualModal(${ms.milestoneID})` : ''}"
+                            title="${actualEditable ? 'Click to enter actual' : (actual !== null ? 'Actual: ' + actual : 'No actual')}">
+                            <div class="qty-actual">${actual !== null ? actual : '<span class="qty-empty">—</span>'}</div>
+                            <div class="qty-lbl">actual</div>
+                            ${variance}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        });
+        html += `</div>`;
+    });
+
+    html += `</div></div>`;
+    grid.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+// PLAN MODAL
+// ═══════════════════════════════════════════════════════
+function openPlanModal(focusMilestoneID) {
+    if (!state.timelineData) return;
+
+    const d = new Date(state.planMonth + '-01');
+    const monthLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    document.getElementById('plan-month-title').textContent = monthLabel;
+    document.getElementById('plan-month-info').textContent = monthLabel;
+    document.getElementById('plan-modal-subtitle').textContent = `Opportunity: ${state.timelineData.opportunity.opportunityName}`;
+
+    let html = '';
+    if (state.isPlanLocked) {
+        html += `<div class="lock-notice"><i class="bi bi-lock-fill"></i> Plans lock after the 7th. You are now planning for next month.</div>`;
+    }
+
+    const nokiaMilestones = state.timelineData.milestones.filter(ms => ms.milestoneType === 1);
+    const customerMilestones = state.timelineData.milestones.filter(ms => ms.milestoneType === 2);
+
+    if (nokiaMilestones.length > 0) {
+        html += `<div class="scope-section"><h4 class="scope-title-nokia"><i class="bi bi-circle-fill" style="font-size:8px"></i> Nokia Scope</h4>`;
+        nokiaMilestones.forEach(ms => {
+            const existing = ms.entries[state.planMonth]?.plan ?? 0;
+            html += `<div class="milestone-input-row">
+                <div class="milestone-input-label">${ms.milestoneName}<span>${ms.milestoneDataID || ''}</span></div>
+                <input type="number" class="qty-input nokia-input" id="plan-ms-${ms.milestoneID}" value="${existing}" min="0">
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (customerMilestones.length > 0) {
+        html += `<div class="scope-section"><h4 class="scope-title-customer"><i class="bi bi-circle-fill" style="font-size:8px"></i> Customer Scope</h4>`;
+        customerMilestones.forEach(ms => {
+            const existing = ms.entries[state.planMonth]?.plan ?? 0;
+            html += `<div class="milestone-input-row">
+                <div class="milestone-input-label">${ms.milestoneName}<span>${ms.milestoneDataID || ''}</span></div>
+                <input type="number" class="qty-input customer-input" id="plan-ms-${ms.milestoneID}" value="${existing}" min="0">
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    document.getElementById('plan-inputs').innerHTML = html;
+    document.getElementById('plan-modal').classList.add('show');
+
+    // Focus on specific milestone if opened from cell click
+    if (focusMilestoneID) {
+        setTimeout(() => {
+            const el = document.getElementById(`plan-ms-${focusMilestoneID}`);
+            if (el) { el.focus(); el.select(); }
+        }, 100);
+    }
+}
+
+function savePlan() {
+    if (!state.timelineData) return;
+    const entries = state.timelineData.milestones.map(ms => {
+        const input = document.getElementById(`plan-ms-${ms.milestoneID}`);
+        return { milestoneID: ms.milestoneID, quantity: input ? parseInt(input.value) || 0 : 0 };
+    });
+
+    fetch('/milestone/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            opportunityID: state.opportunityID,
+            productID: state.productID,
+            poID: state.poID,
+            planMonth: state.planMonth,
+            entries
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('plan-modal');
+            showToast('Plan saved successfully!', 'success');
+            // FIX: reload timeline so grid reflects new values
+            loadTimeline();
+        } else {
+            showToast(data.message || 'Failed to save plan', 'error');
+        }
+    })
+    .catch(() => showToast('Network error saving plan', 'error'));
+}
+
+// ═══════════════════════════════════════════════════════
+// ACTUAL MODAL
+// ═══════════════════════════════════════════════════════
+function openActualModal(focusMilestoneID) {
+    if (!state.timelineData) return;
+
+    const d = new Date(state.actualMonth + '-01');
+    const monthLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    document.getElementById('actual-month-title').textContent = monthLabel;
+    document.getElementById('actual-month-info').textContent = monthLabel;
+    document.getElementById('actual-modal-subtitle').textContent = `Opportunity: ${state.timelineData.opportunity.opportunityName}`;
+
+    let html = '';
+    const nokiaMilestones = state.timelineData.milestones.filter(ms => ms.milestoneType === 1);
+    const customerMilestones = state.timelineData.milestones.filter(ms => ms.milestoneType === 2);
+
+    const buildSection = (milestones, scope) => {
+        let s = `<div class="scope-section"><h4 class="scope-title-${scope}"><i class="bi bi-circle-fill" style="font-size:8px"></i> ${scope === 'nokia' ? 'Nokia' : 'Customer'} Scope</h4>`;
+        milestones.forEach(ms => {
+            const existing = ms.entries[state.actualMonth]?.actual ?? 0;
+            const plan = ms.entries[state.actualMonth]?.plan;
+            s += `<div class="milestone-input-row">
+                <div class="milestone-input-label">${ms.milestoneName}
+                    <span>${ms.milestoneDataID || ''} · Plan: ${plan !== null && plan !== undefined ? plan : '—'}</span>
+                </div>
+                <input type="number" class="qty-input ${scope}-input" id="actual-ms-${ms.milestoneID}" value="${existing}" min="0">
+            </div>`;
+        });
+        return s + `</div>`;
+    };
+
+    if (nokiaMilestones.length > 0) html += buildSection(nokiaMilestones, 'nokia');
+    if (customerMilestones.length > 0) html += buildSection(customerMilestones, 'customer');
+
+    document.getElementById('actual-inputs').innerHTML = html;
+    document.getElementById('actual-remark').value = '';
+    document.getElementById('actual-modal').classList.add('show');
+
+    if (focusMilestoneID) {
+        setTimeout(() => {
+            const el = document.getElementById(`actual-ms-${focusMilestoneID}`);
+            if (el) { el.focus(); el.select(); }
+        }, 100);
+    }
+}
+
+function saveActual() {
+    if (!state.timelineData) return;
+    const remark = document.getElementById('actual-remark').value;
+    const entries = state.timelineData.milestones.map(ms => {
+        const input = document.getElementById(`actual-ms-${ms.milestoneID}`);
+        return { milestoneID: ms.milestoneID, quantity: input ? parseInt(input.value) || 0 : 0 };
+    });
+
+    fetch('/milestone/actual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            opportunityID: state.opportunityID,
+            productID: state.productID,
+            poID: state.poID,
+            actualMonth: state.actualMonth,
+            remark,
+            entries
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('actual-modal');
+            showToast('Actuals saved successfully!', 'success');
+            // FIX: reload timeline so grid updates
+            loadTimeline();
+        } else {
+            showToast(data.message || 'Failed to save actuals', 'error');
+        }
+    })
+    .catch(() => showToast('Network error saving actuals', 'error'));
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+document.querySelectorAll('.overlay-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+});
+
+function fmtMonthYear(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString('default', { month: 'short', year: 'numeric' });
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+
+function exportTimeline() {
+    if (!state.timelineData) return;
+    showToast('Export feature coming soon.', 'success');
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,584 @@
+{% extends "base.html" %}
+{% set active_page = "users" %}
+
+{% block title %}Users{% endblock %}
+
+{% block head %}
+<style>
+    /* ── Inline edit row ── */
+    .edit-row td { padding: 0 !important; }
+    .edit-form-inner {
+        background: #F8FAFC; border-top: 2px solid #1A3D63;
+        padding: 20px 28px 20px 48px;
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+        animation: slideDown 0.2s ease;
+    }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .edit-form-inner .span-2 { grid-column: span 2; }
+    .edit-form-inner .span-3 { grid-column: span 3; }
+    .edit-form-actions {
+        grid-column: span 3; display: flex; justify-content: flex-end; gap: 10px;
+        padding-top: 10px; border-top: 1px solid #E2E8F0; margin-top: 4px;
+    }
+
+    /* ── Role badge ── */
+    .badge-superadmin { background: #FDE8FF; color: #7E22CE; }
+    .badge-admin      { background: #DBEAFE; color: #1D4ED8; }
+    .badge-user       { background: #F1F5F9; color: #475569; }
+
+    /* ── Action buttons ── */
+    .btn-edit {
+        background: none; border: 1px solid #E2E8F0;
+        border-radius: 6px; padding: 5px 10px; font-size: 12px;
+        color: #475569; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 4px;
+        transition: all 0.15s;
+    }
+    .btn-edit:hover  { border-color: #1A3D63; color: #1A3D63; background: #EFF6FF; }
+    .btn-edit.open   { background: #0A1931; color: #fff; border-color: #0A1931; }
+
+    .btn-delete {
+        background: none; border: 1px solid #E2E8F0;
+        border-radius: 6px; padding: 5px 10px; font-size: 12px;
+        color: #94A3B8; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 4px;
+        transition: all 0.15s;
+    }
+    .btn-delete:hover { border-color: #EF4444; color: #EF4444; background: #FEF2F2; }
+
+    /* ── Avatar circle ── */
+    .avatar-circle {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: #1A3D63; color: #fff;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .user-cell { display: flex; align-items: center; gap: 10px; }
+    .user-cell .user-name  { font-weight: 500; font-size: 13px; color: #0A1931; }
+    .user-cell .user-email { font-size: 11.5px; color: #94A3B8; }
+
+    /* ── Customer access chips ── */
+    .customer-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cust-chip {
+        background: #F1F5F9; border-radius: 6px;
+        padding: 2px 8px; font-size: 11px; color: #475569;
+    }
+    .cust-chip.more { background: #E2E8F0; color: #94A3B8; font-style: italic; }
+
+    /* ── Multi-select in edit form ── */
+    .multi-select-wrap {
+        border: 1px solid #E2E8F0; border-radius: 8px;
+        background: #fff; max-height: 120px; overflow-y: auto; padding: 6px 0;
+    }
+    .multi-select-wrap label {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 12px; font-size: 13px; color: #334155;
+        cursor: pointer; transition: background 0.1s;
+        text-transform: none; letter-spacing: 0;
+        font-weight: 400;
+    }
+    .multi-select-wrap label:hover { background: #F8FAFC; }
+    .multi-select-wrap input[type=checkbox] { accent-color: #0A1931; }
+
+    /* Delete confirm overlay */
+    .del-confirm {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.4); z-index: 2000;
+        align-items: center; justify-content: center;
+    }
+    .del-confirm.show { display: flex; }
+    .del-box {
+        background: #fff; border-radius: 14px; padding: 28px 32px;
+        max-width: 400px; width: 90%; text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .del-box h3 { font-size: 16px; color: #0A1931; margin-bottom: 8px; }
+    .del-box p  { font-size: 13px; color: #64748B; margin-bottom: 22px; }
+    .del-box-actions { display: flex; gap: 10px; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1>Users</h1>
+        <p>Manage portal access and user roles</p>
+    </div>
+    <a href="/users/new" class="btn-primary-dt">
+        <i class="bi bi-person-plus"></i> Add User
+    </a>
+</div>
+
+<!-- KPI cards -->
+<div class="kpi-row">
+    <div class="kpi-card accent">
+        <div class="kpi-label">Total Users</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+        <div class="kpi-sub">All accounts</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Active</div>
+        <div class="kpi-value">{{ stats.active }}</div>
+        <div class="kpi-sub">Can log in</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Super Admins</div>
+        <div class="kpi-value">{{ stats.superadmin }}</div>
+        <div class="kpi-sub">Full access</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Inactive</div>
+        <div class="kpi-value">{{ stats.inactive }}</div>
+        <div class="kpi-sub">Disabled accounts</div>
+    </div>
+</div>
+
+<!-- Search + filter -->
+<div class="panel" style="padding:14px 18px;">
+    <div class="filter-bar">
+        <input type="text" id="searchInput" class="filter-select"
+               placeholder="&#128269;  Search by name or email..."
+               oninput="applySearch()" style="min-width:260px;">
+        <select class="filter-select" id="filterRole" onchange="applySearch()">
+            <option value="">All Roles</option>
+            <option value="superadmin">Super Admin</option>
+            <option value="admin">Admin</option>
+            <option value="user">User</option>
+        </select>
+        <select class="filter-select" id="filterStatus" onchange="applySearch()">
+            <option value="">All Status</option>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+        </select>
+        <button class="btn-outline-dt" onclick="clearFilters()">
+            <i class="bi bi-x-circle"></i> Clear
+        </button>
+    </div>
+</div>
+
+<!-- Users table -->
+<div class="panel" style="padding:0;overflow:hidden;">
+    <div style="padding:16px 20px 0;" class="panel-header">
+        <span class="panel-title">All Users</span>
+        <span style="font-size:12px;color:#94A3B8;">Click Edit to modify inline</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="dt-table" id="userTable">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Division</th>
+                    <th>Customer Access</th>
+                    <th>Status</th>
+                    <th style="width:110px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+            <tr class="user-row"
+                data-name="{{ (u.userName or '') | lower }}"
+                data-email="{{ (u.emailAddress or '') | lower }}"
+                data-role="{{ 'superadmin' if u.isSuperAdmin else ('admin' if u.userRole == 1 else 'user') }}"
+                data-status="{{ '1' if u.isActive else '0' }}">
+
+                <!-- User name + email -->
+                <td>
+                    <div class="user-cell">
+                        <div class="avatar-circle">
+                            {{ (u.userName or 'U')[0] | upper }}
+                        </div>
+                        <div>
+                            <div class="user-name">{{ u.userName or '—' }}</div>
+                            <div class="user-email">{{ u.emailAddress or '—' }}</div>
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Role -->
+                <td>
+                    {% if u.isSuperAdmin %}
+                    <span class="badge-status badge-superadmin">Super Admin</span>
+                    {% elif u.userRole == 1 %}
+                    <span class="badge-status badge-admin">Admin</span>
+                    {% else %}
+                    <span class="badge-status badge-user">User</span>
+                    {% endif %}
+                </td>
+
+                <!-- Division -->
+                <td style="font-size:12.5px;color:#475569;">
+                    {{ u.divisions | join(', ') if u.divisions else '—' }}
+                </td>
+
+                <!-- Customer access -->
+                <td>
+                    {% if u.customers %}
+                    <div class="customer-chips">
+                        {% for c in u.customers[:3] %}
+                        <span class="cust-chip">{{ c }}</span>
+                        {% endfor %}
+                        {% if u.customers | length > 3 %}
+                        <span class="cust-chip more">+{{ u.customers | length - 3 }} more</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <span style="font-size:12px;color:#CBD5E1;">All access</span>
+                    {% endif %}
+                </td>
+
+                <!-- Status -->
+                <td>
+                    {% if u.isActive %}
+                    <span class="badge-status badge-active">Active</span>
+                    {% else %}
+                    <span class="badge-status badge-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+
+                <!-- Actions -->
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-edit" id="editbtn-{{ u.userID }}"
+                                onclick="toggleEditForm(this, {{ u.userID }})">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                        <button class="btn-delete"
+                                onclick="confirmDelete({{ u.userID }}, '{{ u.userName | e }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Inline edit form row -->
+            <tr class="edit-row" id="editrow-{{ u.userID }}" style="display:none;">
+                <td colspan="6">
+                    <div class="edit-form-inner">
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Name</label>
+                            <input type="text" class="form-control-dt"
+                                   id="edit-name-{{ u.userID }}"
+                                   value="{{ u.userName or '' }}"
+                                   placeholder="Full name">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Email</label>
+                            <input type="email" class="form-control-dt"
+                                   id="edit-email-{{ u.userID }}"
+                                   value="{{ u.emailAddress or '' }}"
+                                   placeholder="Email address">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Mobile</label>
+                            <input type="text" class="form-control-dt"
+                                   id="edit-mobile-{{ u.userID }}"
+                                   value="{{ u.mobile or '' }}"
+                                   placeholder="Mobile number">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Role</label>
+                            <select class="form-control-dt" id="edit-role-{{ u.userID }}">
+                                <option value="0" {{ 'selected' if not u.isSuperAdmin and u.userRole != 1 }}>User</option>
+                                <option value="1" {{ 'selected' if u.userRole == 1 and not u.isSuperAdmin }}>Admin</option>
+                                <option value="super" {{ 'selected' if u.isSuperAdmin }}>Super Admin</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Status</label>
+                            <select class="form-control-dt" id="edit-status-{{ u.userID }}">
+                                <option value="1" {{ 'selected' if u.isActive }}>Active</option>
+                                <option value="0" {{ 'selected' if not u.isActive }}>Inactive</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label-dt">Reset Password</label>
+                            <input type="password" class="form-control-dt"
+                                   id="edit-password-{{ u.userID }}"
+                                   placeholder="Leave blank to keep current">
+                        </div>
+
+                        <!-- Divisions multi-select -->
+                        <div class="form-group span-2">
+                            <label class="form-label-dt">Division Access</label>
+                            <div class="multi-select-wrap">
+                                {% for d in all_divisions %}
+                                <label>
+                                    <input type="checkbox"
+                                           name="div-{{ u.userID }}"
+                                           value="{{ d.divisionID }}"
+                                           {{ 'checked' if d.divisionID in u.division_ids }}>
+                                    {{ d.divisionName }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Customers multi-select -->
+                        <div class="form-group span-3">
+                            <label class="form-label-dt">Customer Access
+                                <span style="font-weight:400;color:#94A3B8;font-size:10px;margin-left:6px;">
+                                    (leave all unchecked = access to all)
+                                </span>
+                            </label>
+                            <div class="multi-select-wrap" style="max-height:150px;">
+                                {% for c in all_customers %}
+                                <label>
+                                    <input type="checkbox"
+                                           name="cust-{{ u.userID }}"
+                                           value="{{ c.customerID }}"
+                                           {{ 'checked' if c.customerID in u.customer_ids }}>
+                                    {{ c.customerName }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="edit-form-actions">
+                            <button class="btn-outline-dt"
+                                    onclick="closeEditForm({{ u.userID }})">
+                                Cancel
+                            </button>
+                            <button class="btn-primary-dt"
+                                    onclick="saveEdit({{ u.userID }})">
+                                <i class="bi bi-check-lg"></i> Save Changes
+                            </button>
+                        </div>
+
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #F1F5F9;">
+        <span style="font-size:12px;color:#94A3B8;" id="tableInfo"></span>
+        <div style="display:flex;gap:6px;" id="paginationBtns"></div>
+    </div>
+</div>
+
+<!-- Delete confirm overlay -->
+<div class="del-confirm" id="delConfirm">
+    <div class="del-box">
+        <h3>Delete User?</h3>
+        <p id="delMsg">This will deactivate the user account.</p>
+        <div class="del-box-actions">
+            <button class="btn-outline-dt" onclick="closeDelete()">Cancel</button>
+            <button class="btn-primary-dt" id="delConfirmBtn"
+                    style="background:#EF4444;"
+                    onclick="executeDelete()">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PAGE_SIZE  = 15;
+let currentPage  = 1;
+let filteredRows = [];
+let deleteUserId = null;
+let openEditId   = null;
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('tr.user-row'));
+}
+
+function applySearch() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const role   = document.getElementById('filterRole').value;
+    const status = document.getElementById('filterStatus').value;
+
+    filteredRows = getAllRows().filter(r => {
+        const nameOk   = !q      || r.dataset.name.includes(q) || r.dataset.email.includes(q);
+        const roleOk   = !role   || r.dataset.role   === role;
+        const statusOk = !status || r.dataset.status === status;
+        return nameOk && roleOk && statusOk;
+    });
+    currentPage = 1;
+    renderTable();
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('filterRole').value   = '';
+    document.getElementById('filterStatus').value = '';
+    applySearch();
+}
+
+function renderTable() {
+    getAllRows().forEach(r => {
+        r.style.display = 'none';
+        const id  = getUserId(r);
+        const er  = document.getElementById(`editrow-${id}`);
+        if (er) er.style.display = 'none';
+    });
+
+    const start    = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filteredRows.slice(start, start + PAGE_SIZE);
+    pageRows.forEach(r => r.style.display = '');
+    renderInfo(start, pageRows.length);
+    renderPagination();
+}
+
+function getUserId(row) {
+    const btn = row.querySelector('.btn-edit');
+    if (!btn) return null;
+    const m = btn.id.match(/\d+/);
+    return m ? m[0] : null;
+}
+
+function renderInfo(start, count) {
+    const total = filteredRows.length;
+    document.getElementById('tableInfo').textContent =
+        total === 0 ? 'No results' : `Showing ${start+1}–${start+count} of ${total}`;
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+    const container  = document.getElementById('paginationBtns');
+    container.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const mkBtn = (label, page, disabled, active) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `padding:5px 11px;font-size:12px;border-radius:6px;cursor:pointer;
+            border:1px solid #E2E8F0;background:${active?'#0A1931':'#fff'};
+            color:${active?'#fff':'#334155'};`;
+        if (disabled) { b.disabled = true; b.style.opacity='0.4'; }
+        b.onclick = () => { currentPage = page; renderTable(); };
+        return b;
+    };
+
+    container.appendChild(mkBtn('‹', currentPage-1, currentPage===1, false));
+    for (let i = 1; i <= totalPages; i++) {
+        if (i===1 || i===totalPages || Math.abs(i-currentPage)<=1)
+            container.appendChild(mkBtn(i, i, false, i===currentPage));
+        else if (Math.abs(i-currentPage)===2)
+            container.appendChild(Object.assign(document.createElement('span'),
+                {textContent:'…',style:'padding:5px 4px;font-size:12px;color:#94A3B8;'}));
+    }
+    container.appendChild(mkBtn('›', currentPage+1, currentPage===totalPages, false));
+}
+
+// ── Inline edit ──
+function toggleEditForm(btn, id) {
+    const editRow = document.getElementById(`editrow-${id}`);
+    const isOpen  = editRow.style.display !== 'none';
+
+    // Close any other open edit
+    if (openEditId && openEditId !== id) {
+        document.getElementById(`editrow-${openEditId}`).style.display = 'none';
+        document.getElementById(`editbtn-${openEditId}`).classList.remove('open');
+    }
+
+    editRow.style.display = isOpen ? 'none' : '';
+    btn.classList.toggle('open', !isOpen);
+    openEditId = isOpen ? null : id;
+}
+
+function closeEditForm(id) {
+    document.getElementById(`editrow-${id}`).style.display = 'none';
+    const btn = document.getElementById(`editbtn-${id}`);
+    if (btn) btn.classList.remove('open');
+    openEditId = null;
+}
+
+function saveEdit(userId) {
+    const name     = document.getElementById(`edit-name-${userId}`).value.trim();
+    const email    = document.getElementById(`edit-email-${userId}`).value.trim();
+    const mobile   = document.getElementById(`edit-mobile-${userId}`).value.trim();
+    const roleVal  = document.getElementById(`edit-role-${userId}`).value;
+    const status   = document.getElementById(`edit-status-${userId}`).value;
+    const password = document.getElementById(`edit-password-${userId}`).value;
+
+    const divIds  = Array.from(document.querySelectorAll(`[name="div-${userId}"]:checked`))
+                        .map(el => parseInt(el.value));
+    const custIds = Array.from(document.querySelectorAll(`[name="cust-${userId}"]:checked`))
+                        .map(el => parseInt(el.value));
+
+    const saveBtn = document.querySelector(`#editrow-${userId} .btn-primary-dt`);
+    saveBtn.disabled  = true;
+    saveBtn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;"></span> Saving...';
+
+    fetch(`/users/${userId}/edit`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userName:     name,
+            emailAddress: email,
+            mobile:       mobile,
+            roleVal:      roleVal,
+            isActive:     parseInt(status),
+            password:     password || null,
+            divisionIDs:  divIds,
+            customerIDs:  custIds,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            saveBtn.disabled  = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+            alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(() => {
+        saveBtn.disabled  = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes';
+        alert('Network error — changes not saved.');
+    });
+}
+
+// ── Delete ──
+function confirmDelete(userId, name) {
+    deleteUserId = userId;
+    document.getElementById('delMsg').textContent =
+        `Are you sure you want to deactivate "${name}"? They will lose portal access.`;
+    document.getElementById('delConfirm').classList.add('show');
+}
+
+function closeDelete() {
+    deleteUserId = null;
+    document.getElementById('delConfirm').classList.remove('show');
+}
+
+function executeDelete() {
+    if (!deleteUserId) return;
+    const btn = document.getElementById('delConfirmBtn');
+    btn.disabled  = true;
+    btn.innerHTML = 'Deleting...';
+
+    fetch(`/users/${deleteUserId}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Failed: ' + (data.error || 'Unknown'));
+        })
+        .catch(() => alert('Network error.'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    filteredRows = getAllRows();
+    renderTable();
+});
+</script>
+{% endblock %}

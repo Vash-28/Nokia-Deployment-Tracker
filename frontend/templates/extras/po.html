@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Purchase Orders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #F8FAFC; color: #0F172A; }
+
+        .app-layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+
+        /* ── CONTENT (fix: was missing, caused right-side empty space) ── */
+        .content { flex: 1; min-width: 0; padding: 28px; overflow: hidden; }
+
+        .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+        .page-header h1 { font-size: 22px; font-weight: 600; color: #0F172A; }
+        .page-header p { font-size: 13px; color: #64748B; margin-top: 3px; }
+        .btn-primary-custom { background: #124191; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; white-space: nowrap; }
+        .btn-primary-custom:hover { background: #1A56DB; color: #fff; }
+
+        /* KPI CARDS */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; }
+        .kpi-card .num { font-size: 28px; font-weight: 600; color: #124191; }
+        .kpi-card .lbl { font-size: 12px; color: #64748B; margin-top: 2px; }
+        .kpi-card.expiring .num { color: #DC2626; }
+        .kpi-card.expiring { border-color: #FECACA; background: #FFF5F5; }
+
+        /* FILTER CARD */
+        .filter-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+        .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .filter-select { border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px; font-size: 13px; background: #fff; color: #334155; outline: none; min-width: 150px; }
+        .filter-select:focus { border-color: #1A56DB; }
+        .search-box { border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px 8px 36px; font-size: 13px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394A3B8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E") no-repeat 12px center; outline: none; flex: 1; max-width: 280px; }
+        .search-box:focus { border-color: #1A56DB; }
+        .btn-outline { background: #fff; color: #334155; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-outline:hover { background: #F8FAFC; }
+
+        /* TABLE CARD */
+        .table-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; }
+        .table-card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #F1F5F9; }
+        .table-card-header span { font-size: 14px; font-weight: 500; color: #334155; }
+
+        /* DATATABLE OVERRIDES */
+        table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+        table.dataTable thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; padding: 12px 16px !important; background: #F8FAFC; border-bottom: 1px solid #E2E8F0 !important; border-top: none !important; white-space: nowrap; }
+        table.dataTable tbody td { font-size: 13px; color: #334155; padding: 13px 16px !important; border-bottom: 1px solid #F8FAFC !important; vertical-align: middle; }
+        table.dataTable tbody tr:hover { background: #F0F6FF !important; cursor: pointer; }
+        .dataTables_wrapper .dataTables_filter { display: none; }
+        .dataTables_wrapper .dataTables_info { font-size: 12px; color: #94A3B8; padding: 12px 20px; }
+        .dataTables_wrapper .dataTables_paginate { padding: 12px 20px; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { font-size: 12px; border-radius: 6px !important; border: none !important; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #124191 !important; color: #fff !important; }
+        .dataTables_wrapper .dataTables_length { padding: 12px 20px; font-size: 12px; color: #64748B; }
+
+        /* STATUS BADGES */
+        .badge-active { background: #DCFCE7; color: #166534; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+        .badge-inactive { background: #FEE2E2; color: #991B1B; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+        .badge-expiring { background: #FEF3C7; color: #92400E; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+
+        /* COMPLETION BAR */
+        .completion-wrap { display: flex; align-items: center; gap: 8px; }
+        .completion-bar { height: 6px; border-radius: 3px; background: #E2E8F0; width: 80px; overflow: hidden; flex-shrink: 0; }
+        .completion-fill { height: 100%; border-radius: 3px; background: #059669; }
+        .completion-fill.warn { background: #D97706; }
+        .completion-fill.danger { background: #DC2626; }
+        .completion-pct { font-size: 12px; font-weight: 600; color: #059669; min-width: 36px; }
+        .completion-pct.warn { color: #D97706; }
+        .completion-pct.danger { color: #DC2626; }
+
+        /* EXPIRY ALERT */
+        .expiry-alert { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #92400E; }
+        .expiry-alert i { font-size: 16px; flex-shrink: 0; }
+        .expiry-alert strong { margin-right: 4px; }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="app-layout">
+    {% include 'sidebar.html' %}
+
+    <div class="content">
+        <div class="page-header">
+            <div>
+                <h1>Purchase Orders</h1>
+                <p>Track all POs across accounts, divisions and opportunities.</p>
+            </div>
+            <!-- FIX: always show Add PO button; role check can be added if session role logic is wired -->
+            <a href="/po/new" class="btn-primary-custom">
+                <i class="bi bi-plus-lg"></i> Add PO
+            </a>
+        </div>
+
+        {% if expiring_pos %}
+        <div class="expiry-alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div><strong>{{ expiring_pos | length }} PO{{ 's' if expiring_pos | length > 1 else '' }}</strong> expiring within 30 days.</div>
+            <a href="#" onclick="filterExpiring(); return false;" style="margin-left:auto;font-size:12px;color:#92400E;font-weight:500">View expiring →</a>
+        </div>
+        {% endif %}
+
+        <!-- KPI CARDS -->
+        <div class="kpi-row">
+            <div class="kpi-card">
+                <div class="num">{{ pos | length }}</div>
+                <div class="lbl">Total POs</div>
+            </div>
+            <div class="kpi-card">
+                <div class="num">{{ pos | selectattr('isActive') | list | length }}</div>
+                <div class="lbl">Active POs</div>
+            </div>
+            <div class="kpi-card">
+                <div class="num">₹ {{ "{:,.0f}".format(pos | sum(attribute='totalValue')) }}</div>
+                <div class="lbl">Total Value</div>
+            </div>
+            <div class="kpi-card expiring">
+                <div class="num">{{ expiring_pos | length }}</div>
+                <div class="lbl">Expiring in 30 Days</div>
+            </div>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="filter-card">
+            <div class="filter-row">
+                <select class="filter-select" id="filter-account" onchange="applyFilters()">
+                    <option value="">All Accounts</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc.account_name }}">{{ acc.account_name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="filter-select" id="filter-division" onchange="applyFilters()">
+                    <option value="">All Divisions</option>
+                    {% for div in divisions %}
+                    <option value="{{ div.divisionName }}">{{ div.divisionName }}</option>
+                    {% endfor %}
+                </select>
+                <select class="filter-select" id="filter-status" onchange="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Expiring">Expiring Soon</option>
+                </select>
+                <input type="text" class="search-box" id="po-search" placeholder="Search PO name..." oninput="applyFilters()">
+                <button class="btn-outline" onclick="clearFilters()"><i class="bi bi-x"></i> Clear</button>
+                <button class="btn-outline" style="margin-left:auto"><i class="bi bi-download"></i> Export</button>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-card">
+            <div class="table-card-header">
+                <span id="po-count-label">{{ pos | length }} Purchase Orders</span>
+            </div>
+            <table id="poTable" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>PO Name</th>
+                        <th>Account</th>
+                        <th>Customer</th>
+                        <th>Opportunity</th>
+                        <th>Division</th>
+                        <th>Start Date</th>
+                        <th>Valid Till</th>
+                        <th>Value (₹)</th>
+                        <th>Completion</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for po in pos %}
+                    {% set pct = ((po.actualQty or 0) / po.totalQty * 100) | int if po.totalQty else 0 %}
+                    {% set is_expiring = po.daysUntilExpiry is not none and po.daysUntilExpiry <= 30 and po.daysUntilExpiry >= 0 %}
+                    {% set status_val = 'Expiring' if is_expiring else ('Active' if po.isActive else 'Inactive') %}
+                    <tr onclick="window.location='/po/{{ po.poID }}'"
+                        data-account="{{ po.account_name or '' }}"
+                        data-division="{{ po.divisionName or '' }}"
+                        data-status="{{ status_val }}">
+                        <td>{{ po.poID }}</td>
+                        <td style="font-weight:500;color:#0F172A">{{ po.pOName }}</td>
+                        <td>{{ po.account_name or '—' }}</td>
+                        <td>{{ po.customerName or '—' }}</td>
+                        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ po.opportunityName }}">{{ po.opportunityName or '—' }}</td>
+                        <td>{{ po.divisionName or '—' }}</td>
+                        <td>{{ po.startDate or '—' }}</td>
+                        <td style="color:{{ '#DC2626' if is_expiring else 'inherit' }}">
+                            {{ po.endDate or '—' }}
+                            {% if is_expiring %}<span style="font-size:10px;display:block;color:#DC2626">{{ po.daysUntilExpiry }}d left</span>{% endif %}
+                        </td>
+                        <td>{{ "{:,.0f}".format(po.totalValue) }}</td>
+                        <td>
+                            <div class="completion-wrap">
+                                <div class="completion-bar">
+                                    <div class="completion-fill {{ 'warn' if pct < 50 else '' }} {{ 'danger' if pct == 0 else '' }}" style="width:{{ pct }}%"></div>
+                                </div>
+                                <span class="completion-pct {{ 'warn' if pct < 50 else '' }} {{ 'danger' if pct == 0 else '' }}">{{ pct }}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge-{{ 'expiring' if is_expiring else ('active' if po.isActive else 'inactive') }}">
+                                {{ status_val }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script>
+let dtTable;
+
+$(document).ready(function() {
+    dtTable = $('#poTable').DataTable({
+        pageLength: 15,
+        order: [[0, 'desc']],
+        columnDefs: [{ orderable: false, targets: [9, 10] }],
+        drawCallback: function() {
+            const info = this.api().page.info();
+            document.getElementById('po-count-label').textContent =
+                `${info.recordsDisplay} of ${info.recordsTotal} Purchase Orders`;
+        }
+    });
+});
+
+// FIX: Use DataTable's search API so filtering + pagination work correctly together
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    const row = $('#poTable tbody tr').eq(dataIndex);
+    const account = document.getElementById('filter-account').value.toLowerCase();
+    const division = document.getElementById('filter-division').value.toLowerCase();
+    const status = document.getElementById('filter-status').value;
+
+    const rowAccount = (row.data('account') || '').toLowerCase();
+    const rowDivision = (row.data('division') || '').toLowerCase();
+    const rowStatus = row.data('status') || '';
+
+    if (account && !rowAccount.includes(account)) return false;
+    if (division && !rowDivision.includes(division)) return false;
+    if (status && rowStatus !== status) return false;
+    return true;
+});
+
+function applyFilters() {
+    const search = document.getElementById('po-search').value;
+    dtTable.search(search).draw();
+}
+
+function clearFilters() {
+    document.getElementById('filter-account').value = '';
+    document.getElementById('filter-division').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('po-search').value = '';
+    dtTable.search('').draw();
+}
+
+function filterExpiring() {
+    document.getElementById('filter-status').value = 'Expiring';
+    applyFilters();
+}
+</script>
+</body>
+</html>

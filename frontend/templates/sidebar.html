@@ -1,0 +1,54 @@
+<style>
+    .sidebar { 
+        width: 220px; 
+        min-width: 220px;
+        background: #fff; 
+        min-height: calc(100vh - 60px);
+        height: calc(100vh - 60px);
+        position: sticky;
+        top: 60px;
+        border-right: 1px solid #E2E8F0; 
+        transition: width 0.25s; 
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex-shrink: 0; 
+    }
+    .sidebar.collapsed { width: 56px; min-width: 56px; }
+    .section-label { padding: 12px 18px 4px; font-size: 10px; letter-spacing: 0.08em; color: #94A3B8; text-transform: uppercase; font-weight: 600; white-space: nowrap; }
+    .sidebar.collapsed .section-label { display: none; }
+    .sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 18px; text-decoration: none; color: #475569; font-size: 13px; white-space: nowrap; transition: background 0.15s, color 0.15s; }
+    .sidebar nav a i { font-size: 17px; min-width: 18px; }
+    .sidebar nav a:hover { background: #EFF6FF; color: #1A56DB; }
+    .sidebar nav a.active { background: #EFF6FF; color: #1A56DB; font-weight: 500; border-right: 3px solid #1A56DB; }
+    .sidebar.collapsed nav a { justify-content: center; padding: 12px 0; }
+    .sidebar.collapsed nav a span { display: none; }
+</style>
+
+<div class="sidebar" id="sidebar">
+    <nav>
+        <a href="/dashboard" class="{{ 'active' if active_page == 'dashboard' else '' }}"><i class="bi bi-grid"></i><span>Dashboard</span></a>
+    </nav>
+    <div class="section-label">Masters</div>
+    <nav>
+        <a href="/accounts" class="{{ 'active' if active_page == 'accounts' else '' }}"><i class="bi bi-building"></i><span>Accounts</span></a>
+        <a href="/opportunities" class="{{ 'active' if active_page == 'opportunities' else '' }}"><i class="bi bi-briefcase"></i><span>Opportunities</span></a>
+        <a href="/po" class="{{ 'active' if active_page == 'po' else '' }}"><i class="bi bi-file-earmark-text"></i><span>PO</span></a>
+        <a href="/milestone" class="{{ 'active' if active_page == 'milestone' else '' }}"><i class="bi bi-flag"></i><span>Milestones</span></a>
+        <a href="/challenges" class="{{ 'active' if active_page == 'challenges' else '' }}"><i class="bi bi-exclamation-triangle"></i><span>Challenges</span></a>
+    </nav>
+    <div class="section-label">Goods</div>
+    <nav>
+        <a href="/products" class="{{ 'active' if active_page == 'products' else '' }}"><i class="bi bi-box"></i><span>Products</span></a>
+    </nav>
+    <div class="section-label">Admin</div>
+    <nav>
+        <a href="/users" class="{{ 'active' if active_page == 'users' else '' }}"><i class="bi bi-person"></i><span>Users</span></a>
+        <a href="/bulkupload" class="{{ 'active' if active_page == 'bulkupload' else '' }}"><i class="bi bi-upload"></i><span>Bulk Upload</span></a>
+    </nav>
+</div>
+
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    }
+</script>

@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+{% set active_page = "milestone" %}
+
+{% block title %}Start Milestone Tracking{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12.5px; color: #64748B; text-decoration: none;
+        margin-bottom: 18px; transition: color 0.15s;
+    }
+    .back-link:hover { color: #0A1931; }
+
+    /* Step indicator */
+    .steps-row {
+        display: flex; align-items: center; gap: 0;
+        margin-bottom: 32px;
+    }
+    .step {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 0;
+    }
+    .step-num {
+        width: 28px; height: 28px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700;
+        background: #E2E8F0; color: #94A3B8;
+        flex-shrink: 0; transition: all 0.2s;
+    }
+    .step.active .step-num  { background: #0A1931; color: #fff; }
+    .step.done   .step-num  { background: #22C55E; color: #fff; }
+    .step-label {
+        font-size: 12px; color: #94A3B8; font-weight: 500;
+        white-space: nowrap;
+    }
+    .step.active .step-label { color: #0A1931; }
+    .step.done   .step-label { color: #22C55E; }
+    .step-line {
+        flex: 1; height: 1px; background: #E2E8F0;
+        margin: 0 12px; min-width: 24px;
+    }
+    .step-line.done { background: #22C55E; }
+
+    /* Select card */
+    .select-card {
+        background: #fff; border: 1px solid #E2E8F0;
+        border-radius: 12px; padding: 22px 24px;
+        margin-bottom: 16px; transition: border-color 0.15s;
+    }
+    .select-card.active { border-color: #1A56DB; box-shadow: 0 0 0 3px rgba(26,86,219,0.08); }
+    .select-card.done   { border-color: #22C55E; background: #F0FDF4; }
+    .select-card-header {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .select-card-header .num {
+        width: 26px; height: 26px; border-radius: 50%;
+        background: #F1F5F9; color: #64748B;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .select-card.active .num { background: #0A1931; color: #fff; }
+    .select-card.done   .num { background: #22C55E; color: #fff; }
+    .select-card-header h3 { font-size: 14px; font-weight: 600; color: #0A1931; }
+    .select-card-header p  { font-size: 12px; color: #94A3B8; margin-top: 1px; }
+    .select-card.locked { opacity: 0.5; pointer-events: none; }
+
+    /* Summary confirmation box */
+    .confirm-box {
+        display: none;
+        background: #0A1931; border-radius: 12px;
+        padding: 24px 28px; margin-top: 8px;
+    }
+    .confirm-box.visible { display: block; }
+    .confirm-grid {
+        display: grid; grid-template-columns: 1fr 1fr 1fr;
+        gap: 20px; margin-bottom: 20px;
+    }
+    .confirm-item label {
+        font-size: 10.5px; color: #B3CFE5;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        font-weight: 600; display: block; margin-bottom: 4px;
+    }
+    .confirm-item span {
+        font-size: 14px; font-weight: 600; color: #fff;
+    }
+    .confirm-warn {
+        background: rgba(255,255,255,0.07);
+        border-radius: 8px; padding: 12px 16px;
+        font-size: 12.5px; color: #B3CFE5;
+        display: flex; align-items: flex-start; gap: 10px;
+        margin-bottom: 20px;
+    }
+    .confirm-warn i { color: #FCD34D; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .confirm-actions { display: flex; gap: 12px; justify-content: flex-end; }
+    .btn-confirm {
+        background: #1A56DB; color: #fff;
+        border: none; border-radius: 8px;
+        padding: 10px 24px; font-size: 13px; font-weight: 600;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+        transition: background 0.15s;
+    }
+    .btn-confirm:hover { background: #1A3D63; }
+    .btn-cancel-confirm {
+        background: rgba(255,255,255,0.1); color: #CBD5E1;
+        border: none; border-radius: 8px;
+        padding: 10px 20px; font-size: 13px; cursor: pointer;
+    }
+    .btn-cancel-confirm:hover { background: rgba(255,255,255,0.18); }
+
+    /* Loading spinner */
+    .spinner {
+        display: inline-block; width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: #fff; border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a href="/po" class="back-link">
+    <i class="bi bi-arrow-left"></i> Back to POs
+</a>
+
+<div class="page-header">
+    <div>
+        <h1>Start Milestone Tracking</h1>
+        <p>Select the PO and product you want to begin tracking deployment for</p>
+    </div>
+</div>
+
+<!-- Step indicator -->
+<div class="steps-row">
+    <div class="step active" id="step-ind-1">
+        <div class="step-num">1</div>
+        <div class="step-label">Account</div>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step active" id="step-ind-2">
+        <div class="step-num">2</div>
+        <div class="step-label">Opportunity</div>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step" id="step-ind-3">
+        <div class="step-num">3</div>
+        <div class="step-label">PO</div>
+    </div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step" id="step-ind-4">
+        <div class="step-num">4</div>
+        <div class="step-label">Product</div>
+    </div>
+    <div class="step-line" id="line-4"></div>
+    <div class="step" id="step-ind-5">
+        <div class="step-num">5</div>
+        <div class="step-label">Confirm</div>
+    </div>
+</div>
+
+<!-- Card 1: Account + Opportunity -->
+<div class="select-card active" id="card-1">
+    <div class="select-card-header">
+        <div class="num">1</div>
+        <div>
+            <h3>Select Account &amp; Opportunity</h3>
+            <p>Filter by account to narrow the opportunity list</p>
+        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+            <label class="form-label-dt">Account</label>
+            <select class="form-control-dt" id="ms-account" onchange="onAccountChange()">
+                <option value="">All Accounts</option>
+                {% for a in accounts %}
+                <option value="{{ a.accountID }}">{{ a.accountName }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="form-label-dt">Opportunity *</label>
+            <select class="form-control-dt" id="ms-opp" onchange="onOppChange()">
+                <option value="">Select Opportunity</option>
+                {% for o in opportunities %}
+                <option value="{{ o.opportunityID }}"
+                        data-account="{{ o.accountID }}"
+                        data-name="{{ o.opportunityName }}"
+                        data-customer="{{ o.customerName }}">
+                    {{ o.opportunityName }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Card 2: PO -->
+<div class="select-card locked" id="card-2">
+    <div class="select-card-header">
+        <div class="num">2</div>
+        <div>
+            <h3>Select Purchase Order</h3>
+            <p>POs linked to the selected opportunity</p>
+        </div>
+    </div>
+    <div>
+        <label class="form-label-dt">Purchase Order *</label>
+        <select class="form-control-dt" id="ms-po" onchange="onPoChange()">
+            <option value="">Select Opportunity first</option>
+        </select>
+    </div>
+</div>
+
+<!-- Card 3: Product -->
+<div class="select-card locked" id="card-3">
+    <div class="select-card-header">
+        <div class="num">3</div>
+        <div>
+            <h3>Select Product</h3>
+            <p>Products in this PO to track</p>
+        </div>
+    </div>
+    <div>
+        <label class="form-label-dt">Product *</label>
+        <select class="form-control-dt" id="ms-product" onchange="onProductChange()">
+            <option value="">Select PO first</option>
+        </select>
+    </div>
+</div>
+
+<!-- Confirmation box -->
+<div class="confirm-box" id="confirmBox">
+    <div class="confirm-grid" id="confirmGrid"></div>
+    <div class="confirm-warn">
+        <i class="bi bi-info-circle-fill"></i>
+        <span>
+            This will create milestone plan entries for every quarter within the PO date range.
+            If tracking already exists for this PO + Product combination, it will be skipped.
+        </span>
+    </div>
+    <div class="confirm-actions">
+        <button class="btn-cancel-confirm" onclick="resetAll()">Start over</button>
+        <button class="btn-confirm" id="confirmBtn" onclick="submitTracking()">
+            <i class="bi bi-flag-fill"></i> Start Tracking
+        </button>
+    </div>
+</div>
+
+<!-- Hidden form for POST -->
+<form method="POST" action="/milestone/init" id="msForm" style="display:none;">
+    <input type="hidden" name="opportunityID" id="f-opp">
+    <input type="hidden" name="poID"          id="f-po">
+    <input type="hidden" name="productID"     id="f-product">
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Data from Flask ──
+const allOpps = {{ opportunities | tojson }};
+
+// Cached AJAX results
+const poCache      = {};
+const productCache = {};
+
+// State
+let selectedOpp     = null;
+let selectedPo      = null;
+let selectedProduct = null;
+
+// ── Step 1: Account filter ──
+function onAccountChange() {
+    const acctId = document.getElementById('ms-account').value;
+    const sel    = document.getElementById('ms-opp');
+    Array.from(sel.options).forEach(opt => {
+        if (!opt.value) return;
+        opt.style.display = (!acctId || opt.dataset.account === acctId) ? '' : 'none';
+    });
+    sel.value = '';
+    selectedOpp = null;
+    lockCard('card-2');
+    lockCard('card-3');
+    hideConfirm();
+    updateStepIndicator(1);
+}
+
+// ── Step 1: Opportunity selected ──
+function onOppChange() {
+    const sel   = document.getElementById('ms-opp');
+    const oppId = sel.value;
+    if (!oppId) return;
+
+    const opt   = sel.options[sel.selectedIndex];
+    selectedOpp = { id: oppId, name: opt.dataset.name, customer: opt.dataset.customer };
+
+    lockCard('card-3');
+    hideConfirm();
+    unlockCard('card-2');
+    doneCard('card-1');
+    updateStepIndicator(2);
+
+    // Load POs for this opportunity
+    const poSel = document.getElementById('ms-po');
+    poSel.innerHTML = '<option value="">Loading...</option>';
+    poSel.disabled  = true;
+
+    if (poCache[oppId]) {
+        populatePOs(poCache[oppId]);
+        return;
+    }
+
+    fetch(`/milestone/pos-for-opp/${oppId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                poSel.innerHTML = `<option value="">Error: ${data.error}</option>`;
+                return;
+            }
+            poCache[oppId] = data;
+            populatePOs(data);
+        })
+        .catch(err => {
+            poSel.innerHTML = `<option value="">Failed: ${err}</option>`;
+        });
+}
+
+function populatePOs(data) {
+    const sel = document.getElementById('ms-po');
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Select PO</option>';
+    data.forEach(po => {
+        const opt = document.createElement('option');
+        opt.value            = po.poID;
+        opt.dataset.name     = po.pOName;
+        opt.dataset.start    = po.startDate || '';
+        opt.dataset.end      = po.endDate   || '';
+        opt.dataset.tracked  = po.already_tracked ? '1' : '0';
+        opt.textContent      = po.pOName;
+        sel.appendChild(opt);
+    });
+}
+
+// ── Step 2: PO selected ──
+function onPoChange() {
+    const sel  = document.getElementById('ms-po');
+    const poId = sel.value;
+    if (!poId) return;
+
+    const opt    = sel.options[sel.selectedIndex];
+    selectedPo   = {
+        id: poId, name: opt.dataset.name,
+        start: opt.dataset.start, end: opt.dataset.end,
+    };
+
+    hideConfirm();
+    unlockCard('card-3');
+    doneCard('card-2');
+    updateStepIndicator(3);
+
+    // Load products
+    const prodSel = document.getElementById('ms-product');
+    prodSel.innerHTML = '<option value="">Loading...</option>';
+    prodSel.disabled  = true;
+
+    const cacheKey = `${selectedOpp.id}-${poId}`;
+    if (productCache[cacheKey]) {
+        populateProducts(productCache[cacheKey]);
+        return;
+    }
+
+    fetch(`/milestone/products-for-po/${poId}`)
+        .then(r => r.json())
+        .then(data => {
+            productCache[cacheKey] = data;
+            populateProducts(data);
+        })
+        .catch(() => {
+            prodSel.innerHTML = '<option value="">Failed to load products</option>';
+        });
+}
+
+function populateProducts(data) {
+    const sel = document.getElementById('ms-product');
+    sel.disabled = false;
+    sel.innerHTML = '<option value="">Select Product</option>';
+    data.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value           = p.productID;
+        opt.dataset.name    = p.productName;
+        opt.dataset.qty     = p.po_qty;
+        opt.dataset.tracked = p.already_tracked ? '1' : '0';
+        opt.textContent     = p.productName + (p.already_tracked ? ' ✓ (tracking exists)' : '');
+        sel.appendChild(opt);
+    });
+}
+
+// ── Step 3: Product selected ──
+function onProductChange() {
+    const sel  = document.getElementById('ms-product');
+    const pid  = sel.value;
+    if (!pid) { hideConfirm(); return; }
+
+    const opt = sel.options[sel.selectedIndex];
+    selectedProduct = {
+        id: pid, name: opt.dataset.name, qty: opt.dataset.qty,
+        alreadyTracked: opt.dataset.tracked === '1'
+    };
+
+    doneCard('card-3');
+    updateStepIndicator(4);
+    showConfirm();
+}
+
+// ── Confirm box ──
+function showConfirm() {
+    const box = document.getElementById('confirmBox');
+    box.classList.add('visible');
+
+    document.getElementById('confirmGrid').innerHTML = `
+        <div class="confirm-item"><label>Opportunity</label><span>${selectedOpp.name}</span></div>
+        <div class="confirm-item"><label>Customer</label><span>${selectedOpp.customer}</span></div>
+        <div class="confirm-item"><label>PO Name</label><span>${selectedPo.name}</span></div>
+        <div class="confirm-item"><label>PO Start</label><span>${selectedPo.start || '—'}</span></div>
+        <div class="confirm-item"><label>PO End</label><span>${selectedPo.end || '—'}</span></div>
+        <div class="confirm-item"><label>Product</label><span>${selectedProduct.name}</span></div>
+    `;
+
+    // Update confirm button if already tracked
+    const btn = document.getElementById('confirmBtn');
+    if (selectedProduct.alreadyTracked) {
+        btn.innerHTML = '<i class="bi bi-graph-up"></i> View Tracking';
+        btn.style.background = '#1A3D63';
+    } else {
+        btn.innerHTML = '<i class="bi bi-flag-fill"></i> Start Tracking';
+        btn.style.background = '#1A56DB';
+    }
+
+    updateStepIndicator(5);
+}
+
+function hideConfirm() {
+    document.getElementById('confirmBox').classList.remove('visible');
+}
+
+// ── Submit ──
+function submitTracking() {
+    const btn = document.getElementById('confirmBtn');
+    btn.innerHTML = '<span class="spinner"></span> Creating...';
+    btn.disabled  = true;
+
+    document.getElementById('f-opp').value     = selectedOpp.id;
+    document.getElementById('f-po').value      = selectedPo.id;
+    document.getElementById('f-product').value = selectedProduct.id;
+    document.getElementById('msForm').submit();
+}
+
+// ── Card state helpers ──
+function lockCard(id) {
+    document.getElementById(id).className = 'select-card locked';
+}
+function unlockCard(id) {
+    document.getElementById(id).className = 'select-card active';
+}
+function doneCard(id) {
+    document.getElementById(id).className = 'select-card done';
+}
+
+function resetAll() {
+    document.getElementById('ms-account').value  = '';
+    document.getElementById('ms-opp').value      = '';
+    document.getElementById('ms-po').innerHTML   = '<option value="">Select Opportunity first</option>';
+    document.getElementById('ms-product').innerHTML = '<option value="">Select PO first</option>';
+    selectedOpp = selectedPo = selectedProduct = null;
+    document.getElementById('card-1').className = 'select-card active';
+    lockCard('card-2'); lockCard('card-3');
+    hideConfirm();
+    updateStepIndicator(1);
+}
+
+// ── Step indicator ──
+function updateStepIndicator(activeStep) {
+    for (let i = 1; i <= 5; i++) {
+        const el   = document.getElementById(`step-ind-${i}`);
+        const line = document.getElementById(`line-${i}`);
+        el.className = 'step' + (i < activeStep ? ' done' : i === activeStep ? ' active' : '');
+        if (line) line.className = 'step-line' + (i < activeStep ? ' done' : '');
+    }
+}
+</script>
+{% endblock %}

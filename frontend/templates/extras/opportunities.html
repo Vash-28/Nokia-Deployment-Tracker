@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deployment Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css_styling/opportunity_style.css') }}">
+</head>
+
+<body>
+
+<div class="container-fluid p-4">
+
+    <h2 class="mb-4">Deployment Dashboard</h2>
+    <div class="kpi-container">
+        <div class="summary-row">
+            <div class="col-md-3">
+                <div class="summary-card" id="onTrack">
+                    <h3>{{ ongoing }}</h3>
+                    <p>Ongoing</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card warning" id="delayedCard">
+                    <h3>{{ initialized }}</h3>
+                    <p>Initialized</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="summary-card danger" id="expiringCard">
+                    <h3>{{ completed }}</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <input type="text" id="customSearch" class="search-box" placeholder="Search opportunities...">
+        <button class="filter-chip active">All</button>
+        <button class="filter-chip">Ongoing</button>
+        <button class="filter-chip">Initialized</button>
+        <button class="filter-chip">Completed</button>
+    </div>
+
+    <table id="opportunityTable" class="display">
+        <thead>
+            <tr>
+                <th>Opportunity</th>
+                <th>Number</th>
+                <th>Customer</th>
+                <th>Division</th>
+                <th>Active</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Total Value</th>
+                <th>Created By</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opp in opportunities %}
+            <tr>
+                <td>{{ opp.opportunityName }}</td>
+                <td>{{ opp.opportunityNumber }}</td>
+                <td>{{ opp.customerID }}</td>
+                <td>{{ opp.divisionID }}</td>
+                <td>{{ "Yes" if opp.isActive else "No" }}</td>
+                <td>{{ opp.startDate }}</td>
+                <td>{{ opp.endDate }}</td>
+                <td>{{ opp.totalValue }}</td>
+                <td>{{ opp.createdBy }}</td>
+                <td><span class="status">{{ opp.status }}</span></td>
+                <td><button class="btn btn-primary btn-sm view-btn">View</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="detailsPanel" class="mt-5 d-none">
+        <div class="details-card">
+            <div class="details-header">
+                <h4>Opportunity Summary</h4>
+                <button id="closeSummary">✕</button>
+            </div>
+            <p><strong>Status:</strong> Delayed</p>
+            <p><strong>Progress:</strong> 35%</p>
+            <p><strong>Next Action:</strong> Customer Scope</p>
+            <div class="progress mt-3">
+                <div class="progress-bar" style="width:35%">35%</div>
+            </div>
+            <hr>
+            <h5>Deployment Journey</h5>
+            <div class="journey">
+                <div class="stage complete">Hub</div>
+                <div class="stage complete">WH</div>
+                <div class="stage active">Site</div>
+                <div class="stage">Install</div>
+                <div class="stage">Integration</div>
+                <div class="stage">RFS</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="{{ url_for('static', filename='js/opportunity_script.js') }}"></script>
+
+</body>
+</html>

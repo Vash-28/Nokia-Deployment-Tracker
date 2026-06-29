@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ po.pOName }} — PO Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #F8FAFC; color: #0F172A; }
+
+        .app-layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+        .content { flex: 1; min-width: 0; padding: 28px; }
+
+        /* BREADCRUMB */
+        .breadcrumb-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #64748B; margin-bottom: 20px; }
+        .breadcrumb-row a { color: #64748B; text-decoration: none; }
+        .breadcrumb-row a:hover { color: #1A56DB; }
+        .breadcrumb-row .sep { color: #CBD5E1; }
+        .breadcrumb-row .current { color: #0F172A; font-weight: 500; }
+
+        /* PO HEADER CARD */
+        .po-header-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px; }
+        .po-title { font-size: 22px; font-weight: 600; color: #0F172A; margin-bottom: 6px; }
+        .po-meta { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 12px; }
+        .po-meta-item strong { display: block; font-size: 11px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+        .po-meta-item span { font-size: 13px; color: #334155; }
+        .po-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+        .po-stat-box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 18px; text-align: center; min-width: 100px; }
+        .po-stat-box .sv { font-size: 22px; font-weight: 600; color: #124191; }
+        .po-stat-box .sk { font-size: 11px; color: #64748B; margin-top: 2px; }
+        .po-stat-box.green .sv { color: #059669; }
+
+        .badge-active { background: #DCFCE7; color: #166534; font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+        .badge-inactive { background: #FEE2E2; color: #991B1B; font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+        .badge-expiring { background: #FEF3C7; color: #92400E; font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+
+        .btn-primary-custom { background: #124191; color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; }
+        .btn-primary-custom:hover { background: #1A56DB; color: #fff; }
+        .btn-outline-custom { background: #fff; color: #334155; border: 1px solid #E2E8F0; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; }
+        .btn-outline-custom:hover { background: #F8FAFC; }
+
+        /* CARD */
+        .card { background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #F1F5F9; }
+        .card-header h2 { font-size: 15px; font-weight: 600; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0; }
+        .card-header h2 i { color: #1A56DB; }
+
+        table.detail-table { width: 100%; border-collapse: collapse; }
+        table.detail-table thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; padding: 12px 16px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; white-space: nowrap; }
+        table.detail-table tbody td { font-size: 13px; color: #334155; padding: 14px 16px; border-bottom: 1px solid #F8FAFC; vertical-align: middle; }
+        table.detail-table tbody tr:last-child td { border-bottom: none; }
+        table.detail-table tbody tr:hover { background: #F8FAFC; }
+
+        /* PROGRESS BAR */
+        .prog-wrap { display: flex; align-items: center; gap: 8px; }
+        .prog-bar { height: 8px; border-radius: 4px; background: #E2E8F0; width: 100px; overflow: hidden; }
+        .prog-fill { height: 100%; border-radius: 4px; background: #059669; }
+        .prog-fill.warn { background: #D97706; }
+        .prog-fill.danger { background: #DC2626; }
+        .prog-pct { font-size: 12px; font-weight: 600; color: #059669; min-width: 36px; }
+        .prog-pct.warn { color: #D97706; }
+        .prog-pct.danger { color: #DC2626; }
+
+        /* MILESTONE SECTION */
+        .product-tabs { display: flex; gap: 0; border-bottom: 2px solid #E2E8F0; margin-bottom: 24px; overflow-x: auto; }
+        .product-tab { padding: 10px 20px; font-size: 13px; font-weight: 500; color: #64748B; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; transition: all 0.15s; }
+        .product-tab:hover { color: #1A56DB; }
+        .product-tab.active { color: #1A56DB; border-bottom-color: #1A56DB; }
+        .product-tab-panel { display: none; }
+        .product-tab-panel.active { display: block; }
+
+        /* STAGE TRACK */
+        .stage-track { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 8px 0 24px; }
+        .stage-node { display: flex; flex-direction: column; align-items: center; min-width: 140px; position: relative; }
+        .stage-node:not(:last-child)::after { content: ''; position: absolute; top: 20px; left: calc(50% + 20px); width: calc(100% - 40px); height: 2px; background: #E2E8F0; z-index: 0; }
+        .stage-node.done:not(:last-child)::after { background: #059669; }
+        .stage-node.partial:not(:last-child)::after { background: #D97706; }
+
+        .stage-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #E2E8F0; background: #fff; display: flex; justify-content: center; align-items: center; font-size: 16px; z-index: 1; position: relative; }
+        .stage-node.done .stage-circle { background: #059669; border-color: #059669; color: #fff; }
+        .stage-node.partial .stage-circle { background: #FEF3C7; border-color: #D97706; color: #D97706; }
+        .stage-node.current .stage-circle { background: #EFF6FF; border-color: #1A56DB; color: #1A56DB; box-shadow: 0 0 0 4px rgba(26,86,219,0.12); }
+        .stage-node.pending .stage-circle { background: #F8FAFC; border-color: #CBD5E1; color: #94A3B8; }
+
+        .stage-name { font-size: 12px; font-weight: 600; color: #334155; margin-top: 10px; text-align: center; }
+        .stage-node.done .stage-name { color: #059669; }
+        .stage-node.current .stage-name { color: #1A56DB; }
+        .stage-node.pending .stage-name { color: #94A3B8; }
+
+        .stage-qty { margin-top: 4px; font-size: 11px; color: #64748B; text-align: center; line-height: 1.5; }
+        .stage-qty .qty-actual { font-weight: 600; color: #059669; }
+        .stage-qty .qty-actual.warn { color: #D97706; }
+        .stage-qty .qty-actual.none { color: #94A3B8; }
+
+        /* MILESTONE DETAIL TABLE */
+        .milestone-detail { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; margin-top: 20px; }
+        .milestone-detail h4 { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 14px; }
+        table.ms-table { width: 100%; border-collapse: collapse; }
+        table.ms-table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94A3B8; padding: 8px 12px; border-bottom: 1px solid #E2E8F0; text-align: left; }
+        table.ms-table td { font-size: 12px; color: #334155; padding: 10px 12px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+        table.ms-table tr:last-child td { border-bottom: none; }
+        .var-positive { color: #059669; font-weight: 600; }
+        .var-negative { color: #DC2626; font-weight: 600; }
+        .var-zero { color: #64748B; }
+        .month-chip { display: inline-block; background: #EFF6FF; color: #1A56DB; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+
+        .empty-ms { text-align: center; padding: 32px; color: #94A3B8; font-size: 13px; }
+        .empty-ms i { font-size: 28px; display: block; margin-bottom: 8px; }
+
+        .btn-plan { background: #F0F6FF; color: #1A56DB; border: 1px solid #BFDBFE; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-plan:hover { background: #DBEAFE; color: #1A56DB; }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="app-layout">
+    {% include 'sidebar.html' %}
+
+    <div class="content">
+
+        <div class="breadcrumb-row">
+            <a href="/po">Purchase Orders</a>
+            <span class="sep">›</span>
+            <span class="current">{{ po.pOName }}</span>
+        </div>
+
+        <!-- PO HEADER -->
+        <div class="po-header-card">
+            <div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                    <div class="po-title">{{ po.pOName }}</div>
+                    {% set is_expiring = po.daysUntilExpiry is not none and po.daysUntilExpiry <= 30 and po.daysUntilExpiry >= 0 %}
+                    <span class="badge-{{ 'expiring' if is_expiring else ('active' if po.isActive else 'inactive') }}">
+                        {{ 'Expiring Soon' if is_expiring else ('Active' if po.isActive else 'Inactive') }}
+                    </span>
+                </div>
+                <div class="po-meta">
+                    <div class="po-meta-item">
+                        <strong>Opportunity</strong>
+                        <span><a href="/opportunities" style="color:#1A56DB;text-decoration:none">{{ po.opportunityName or '—' }}</a></span>
+                    </div>
+                    <div class="po-meta-item">
+                        <strong>Customer</strong>
+                        <span>{{ po.customerName or '—' }}</span>
+                    </div>
+                    <div class="po-meta-item">
+                        <strong>Division</strong>
+                        <span>{{ po.divisionName or '—' }}</span>
+                    </div>
+                    <div class="po-meta-item">
+                        <strong>Start Date</strong>
+                        <span>{{ po.startDate or '—' }}</span>
+                    </div>
+                    <div class="po-meta-item">
+                        <strong>Valid Till</strong>
+                        <span style="{{ 'color:#DC2626;font-weight:600' if is_expiring else '' }}">
+                            {{ po.endDate or '—' }}
+                            {% if is_expiring %} ({{ po.daysUntilExpiry }}d left){% endif %}
+                        </span>
+                    </div>
+                    {% if po.poRemark %}
+                    <div class="po-meta-item">
+                        <strong>Remark</strong>
+                        <span>{{ po.poRemark }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="po-stats">
+                    <div class="po-stat-box">
+                        <div class="sv">₹ {{ "{:,.0f}".format(po.totalValue) }}</div>
+                        <div class="sk">Total Value</div>
+                    </div>
+                    <div class="po-stat-box green">
+                        <div class="sv">{{ po_details | length }}</div>
+                        <div class="sk">Products</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+                    <!-- FIX: "Manage Plans" now links to /milestone with params pre-filled, not a non-existent route -->
+                    <a href="/milestone?opp={{ po.opportunityID }}" class="btn-primary-custom">
+                        <i class="bi bi-calendar3"></i> View Milestones
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TABLE -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="bi bi-box-seam"></i> Product Line Items</h2>
+            </div>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Product</th>
+                        <th>PO Quantity</th>
+                        <th>Actual Quantity</th>
+                        <th>Rate (₹)</th>
+                        <th>Line Total (₹)</th>
+                        <th>Completion</th>
+                        <th>Remark</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in po_details %}
+                    {% set pct = ((d.poActualQuantity or 0) / d.productQuantity * 100) | int if d.productQuantity else 0 %}
+                    <tr>
+                        <td style="color:#94A3B8">{{ loop.index }}</td>
+                        <td style="font-weight:500;color:#0F172A">{{ d.productName }}</td>
+                        <td>{{ d.productQuantity | int }}</td>
+                        <td>{{ (d.poActualQuantity or 0) | int }}</td>
+                        <td>{{ "{:,.2f}".format(d.productRate) }}</td>
+                        <td style="font-weight:600;color:#124191">{{ "{:,.0f}".format(d.productTotal) }}</td>
+                        <td>
+                            <div class="prog-wrap">
+                                <div class="prog-bar">
+                                    <div class="prog-fill {{ 'warn' if pct < 50 else '' }} {{ 'danger' if pct == 0 else '' }}" style="width:{{ pct }}%"></div>
+                                </div>
+                                <span class="prog-pct {{ 'warn' if pct < 50 else '' }} {{ 'danger' if pct == 0 else '' }}">{{ pct }}%</span>
+                            </div>
+                        </td>
+                        <td style="color:#64748B;font-size:12px">{{ d.productRemark or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align:center;padding:24px;color:#94A3B8">No product line items found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MILESTONE TRACKING -->
+        <div class="card">
+            <div class="card-header">
+                <h2><i class="bi bi-flag"></i> Milestone Tracking</h2>
+                <a href="/milestone?opp={{ po.opportunityID }}" class="btn-plan">
+                    <i class="bi bi-arrow-right"></i> Open Milestone Tracker
+                </a>
+            </div>
+
+            <div style="padding: 20px;">
+                {% if po_details %}
+                <div class="product-tabs">
+                    {% for d in po_details %}
+                    <div class="product-tab {{ 'active' if loop.first else '' }}" onclick="switchProductTab({{ loop.index0 }})">
+                        {{ d.productName }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% for d in po_details %}
+                <div class="product-tab-panel {{ 'active' if loop.first else '' }}" id="prod-tab-{{ loop.index0 }}">
+
+                    {% set ms_data = milestone_data.get(d.productID, []) %}
+
+                    {% if ms_data %}
+
+                    <!-- VISUAL TIMELINE -->
+                    <div class="stage-track">
+                        {% for stage in ms_data %}
+                        {% set pct = ((stage.totalActual or 0) / stage.totalPlanned * 100) | int if stage.totalPlanned else 0 %}
+                        {% if pct >= 100 %}{% set node_state = 'done' %}
+                        {% elif pct > 0 %}{% set node_state = 'partial' %}
+                        {% elif stage.totalPlanned %}{% set node_state = 'current' %}
+                        {% else %}{% set node_state = 'pending' %}{% endif %}
+
+                        <div class="stage-node {{ node_state }}">
+                            <div class="stage-circle">
+                                {% if node_state == 'done' %}<i class="bi bi-check-lg"></i>
+                                {% elif node_state == 'partial' %}<i class="bi bi-hourglass-split"></i>
+                                {% elif node_state == 'current' %}<i class="bi bi-arrow-right"></i>
+                                {% else %}<i class="bi bi-circle"></i>{% endif %}
+                            </div>
+                            <div class="stage-name">{{ stage.milestoneName }}</div>
+                            <div class="stage-qty">
+                                {% if stage.totalPlanned %}
+                                <div>Plan: {{ stage.totalPlanned | int }}</div>
+                                <div class="qty-actual {{ 'none' if not stage.totalActual else ('warn' if pct < 100 else '') }}">
+                                    Actual: {{ (stage.totalActual or 0) | int }}
+                                </div>
+                                {% else %}
+                                <div style="color:#CBD5E1;font-size:11px">No plan</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- DETAILED BREAKDOWN TABLE -->
+                    <div class="milestone-detail">
+                        <h4>Monthly Breakdown</h4>
+                        <table class="ms-table">
+                            <thead>
+                                <tr>
+                                    <th>Milestone</th>
+                                    <th>Quarter</th>
+                                    <th>Month</th>
+                                    <th>Planned</th>
+                                    <th>Actual</th>
+                                    <th>Variance</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stage in ms_data %}
+                                    {% for row in stage.records %}
+                                    {% set var = (row.actualQty or 0) - (row.plannedQty or 0) %}
+                                    <tr>
+                                        <td style="font-weight:500">{{ stage.milestoneName }}</td>
+                                        <td><span class="month-chip">{{ row.quarterName }}</span></td>
+                                        <td>{{ row.monthLabel }}</td>
+                                        <td>{{ (row.plannedQty or 0) | int }}</td>
+                                        <td style="font-weight:600">{{ (row.actualQty or 0) | int }}</td>
+                                        <td>
+                                            {% if var > 0 %}<span class="var-positive">+{{ var | int }}</span>
+                                            {% elif var < 0 %}<span class="var-negative">{{ var | int }}</span>
+                                            {% else %}<span class="var-zero">0</span>{% endif %}
+                                        </td>
+                                        <td style="font-size:12px;color:#64748B">{{ row.remark or '—' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% else %}
+                    <div class="empty-ms">
+                        <i class="bi bi-calendar-x"></i>
+                        No milestone plans found for this product.
+                        <div style="margin-top:10px">
+                            <a href="/milestone?opp={{ po.opportunityID }}&product={{ d.productID }}" class="btn-plan">
+                                <i class="bi bi-plus"></i> Create Milestone Plan
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+                {% endfor %}
+
+                {% else %}
+                <div class="empty-ms">
+                    <i class="bi bi-box"></i>
+                    No products in this PO yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function switchProductTab(idx) {
+    document.querySelectorAll('.product-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+    document.querySelectorAll('.product-tab-panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+}
+</script>
+
+</body>
+</html>

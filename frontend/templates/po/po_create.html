@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% set active_page = "po" %}
+
+{% block title %}Create PO{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12.5px; color: #64748B; text-decoration: none;
+        margin-bottom: 18px; transition: color 0.15s;
+    }
+    .back-link:hover { color: #0A1931; }
+
+    /* Opp summary strip shown after selecting an opportunity */
+    .opp-summary {
+        display: none;
+        background: #F0F7FF; border: 1px solid #BFDBFE;
+        border-radius: 10px; padding: 14px 18px;
+        margin-bottom: 18px; gap: 28px;
+        flex-wrap: wrap;
+    }
+    .opp-summary.visible { display: flex; }
+    .opp-sum-item label {
+        font-size: 10.5px; color: #1D4ED8; text-transform: uppercase;
+        letter-spacing: 0.06em; font-weight: 600; display: block;
+        margin-bottom: 2px;
+    }
+    .opp-sum-item span { font-size: 13.5px; font-weight: 600; color: #0A1931; }
+
+    /* Product rows */
+    .product-row {
+        display: grid;
+        grid-template-columns: 2.5fr 1fr 1fr 1fr 36px;
+        gap: 12px; align-items: end;
+        padding: 14px 16px;
+        background: #F8FAFC; border: 1px solid #E2E8F0;
+        border-radius: 10px; margin-bottom: 10px;
+    }
+    .remove-row-btn {
+        background: none; border: none; cursor: pointer;
+        color: #CBD5E1; padding: 8px 4px;
+        border-radius: 6px; font-size: 18px;
+        transition: color 0.15s; align-self: end; padding-bottom: 10px;
+    }
+    .remove-row-btn:hover { color: #EF4444; }
+    .add-row-btn {
+        background: none; border: 1px dashed #B3CFE5;
+        border-radius: 8px; padding: 10px 18px;
+        color: #4A7FA7; font-size: 13px; cursor: pointer;
+        width: 100%; margin-top: 6px;
+        transition: background 0.15s, border-color 0.15s;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .add-row-btn:hover { background: #EFF6FF; border-color: #4A7FA7; }
+    .add-row-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Opp qty badge next to product qty input */
+    .opp-qty-hint {
+        font-size: 11px; color: #64748B; margin-top: 4px;
+    }
+    .opp-qty-hint span { color: #1A3D63; font-weight: 600; }
+
+    .totals-strip {
+        background: #0A1931; color: #fff;
+        border-radius: 10px; padding: 14px 20px;
+        display: flex; gap: 32px; margin-top: 10px;
+    }
+    .totals-strip .tot-item label {
+        font-size: 10.5px; color: #B3CFE5; text-transform: uppercase;
+        letter-spacing: 0.06em; display: block; margin-bottom: 3px;
+    }
+    .totals-strip .tot-item span { font-size: 16px; font-weight: 700; color: #fff; }
+
+    .form-actions {
+        display: flex; gap: 12px; justify-content: flex-end;
+        padding-top: 10px; margin-top: 6px;
+        border-top: 1px solid #E2E8F0;
+    }
+
+    /* Disabled state for product section before opp is chosen */
+    .products-section { transition: opacity 0.2s; }
+    .products-section.locked { opacity: 0.4; pointer-events: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a href="/po" class="back-link">
+    <i class="bi bi-arrow-left"></i> Back to POs
+</a>
+
+<div class="page-header">
+    <div>
+        <h1>New Purchase Order</h1>
+        <p>Select an opportunity first, then fill in PO details and products</p>
+    </div>
+</div>
+
+<form method="POST" action="/po/create" id="poForm">
+
+    <!-- ── Section 1: Link to Opportunity ── -->
+    <div class="panel">
+        <div class="form-divider">Link to Opportunity</div>
+        <div class="form-grid">
+
+            <div class="form-group">
+                <label class="form-label-dt">Account</label>
+                <select class="form-control-dt" id="accountSelect" onchange="filterOpportunities()">
+                    <option value="">All Accounts</option>
+                    {% for a in accounts %}
+                    <option value="{{ a.accountID }}">{{ a.accountName }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Opportunity *</label>
+                <select name="opportunityID" id="oppSelect" class="form-control-dt"
+                        required onchange="onOppChange()">
+                    <option value="">Select Opportunity</option>
+                    {% for o in opportunities %}
+                    <option value="{{ o.opportunityID }}"
+                            data-account="{{ o.accountID }}"
+                            data-customer="{{ o.customerName }}"
+                            data-value="{{ o.totalValue }}"
+                            data-start="{{ o.startDate }}"
+                            data-end="{{ o.endDate or '' }}">
+                        {{ o.opportunityName }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+
+        <!-- Opportunity summary strip -->
+        <div class="opp-summary" id="oppSummary">
+            <div class="opp-sum-item">
+                <label>Customer</label>
+                <span id="sumCustomer">—</span>
+            </div>
+            <div class="opp-sum-item">
+                <label>Opp Value</label>
+                <span id="sumValue">—</span>
+            </div>
+            <div class="opp-sum-item">
+                <label>Opp Start</label>
+                <span id="sumStart">—</span>
+            </div>
+            <div class="opp-sum-item">
+                <label>Opp End</label>
+                <span id="sumEnd">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Section 2: PO Details ── -->
+    <div class="panel">
+        <div class="form-divider">PO Details</div>
+        <div class="form-grid">
+
+            <div class="form-group span-2">
+                <label class="form-label-dt">PO Name / Number *</label>
+                <input type="text" name="pOName" class="form-control-dt"
+                       placeholder="e.g. BAL-MO-NCR-HARYANA/PUR/10010537" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">PO Start Date *</label>
+                <input type="date" name="startDate" id="poStartDate" class="form-control-dt" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">PO End Date</label>
+                <input type="date" name="endDate" id="poEndDate" class="form-control-dt">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Total Value (₹) *</label>
+                <input type="number" name="totalValue" id="poTotalValue" class="form-control-dt"
+                       placeholder="Auto-calculated" readonly
+                       style="background:#F8FAFC;cursor:not-allowed;">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">PO Remark</label>
+                <input type="text" name="poRemark" class="form-control-dt"
+                       placeholder="Optional notes">
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Section 3: Products ── -->
+    <div class="panel products-section locked" id="productsSection">
+        <div class="form-divider">Products in this PO</div>
+        <p style="font-size:12.5px;color:#64748B;margin-bottom:14px;" id="productsHint">
+            Select an opportunity above to load available products.
+        </p>
+
+        <div id="productRows"></div>
+
+        <button type="button" class="add-row-btn" id="addRowBtn" onclick="addProductRow()" disabled>
+            <i class="bi bi-plus-circle"></i> Add Product
+        </button>
+
+        <div class="totals-strip" style="margin-top:18px;">
+            <div class="tot-item">
+                <label>Products</label>
+                <span id="totalProducts">0</span>
+            </div>
+            <div class="tot-item">
+                <label>Total PO Qty</label>
+                <span id="totalQty">0</span>
+            </div>
+            <div class="tot-item">
+                <label>Total Value</label>
+                <span>₹ <span id="totalVal">0</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="form-actions">
+        <a href="/po" class="btn-outline-dt">Cancel</a>
+        <button type="submit" class="btn-primary-dt">
+            <i class="bi bi-check-lg"></i> Create PO
+        </button>
+    </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Opportunity data injected from Flask ──
+const allOpps = {{ opportunities | tojson }};
+// Each opp: { opportunityID, opportunityName, accountID, customerName, totalValue, startDate, endDate }
+
+// Products per opportunity loaded on demand from AJAX
+let oppProducts = {};  // { oppId: [{productID, productName, productUOM, opp_qty}] }
+let rowCount    = 0;
+let currentOppId = null;
+
+// ── Account filter ──
+function filterOpportunities() {
+    const acctId = document.getElementById('accountSelect').value;
+    const sel    = document.getElementById('oppSelect');
+    Array.from(sel.options).forEach(opt => {
+        if (!opt.value) return; // keep placeholder
+        opt.style.display = (!acctId || opt.dataset.account === acctId) ? '' : 'none';
+    });
+    sel.value = '';
+    resetProducts();
+    document.getElementById('oppSummary').classList.remove('visible');
+}
+
+// ── Opportunity selected ──
+function onOppChange() {
+    const sel   = document.getElementById('oppSelect');
+    const oppId = sel.value;
+    if (!oppId) {
+        document.getElementById('oppSummary').classList.remove('visible');
+        resetProducts();
+        return;
+    }
+
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('sumCustomer').textContent = opt.dataset.customer || '—';
+    document.getElementById('sumValue').textContent    = '₹ ' + parseFloat(opt.dataset.value || 0).toLocaleString('en-IN');
+    document.getElementById('sumStart').textContent    = opt.dataset.start  || '—';
+    document.getElementById('sumEnd').textContent      = opt.dataset.end    || '—';
+    document.getElementById('oppSummary').classList.add('visible');
+
+    currentOppId = oppId;
+    loadOppProducts(oppId);
+}
+
+function loadOppProducts(oppId) {
+    resetProducts();
+    document.getElementById('productsHint').textContent = 'Loading products...';
+
+    fetch(`/opportunities/${oppId}/products-for-po`)
+        .then(r => r.json())
+        .then(data => {
+            oppProducts[oppId] = data;
+            document.getElementById('productsSection').classList.remove('locked');
+            document.getElementById('addRowBtn').disabled = false;
+            document.getElementById('productsHint').textContent =
+                `${data.length} product(s) available in this opportunity. Add rows below.`;
+            // Auto-add first row
+            if (data.length > 0) addProductRow();
+        })
+        .catch(() => {
+            document.getElementById('productsHint').textContent = 'Failed to load products.';
+        });
+}
+
+function resetProducts() {
+    document.getElementById('productRows').innerHTML = '';
+    document.getElementById('productsSection').classList.add('locked');
+    document.getElementById('addRowBtn').disabled = true;
+    rowCount = 0;
+    recalc();
+}
+
+// ── Product rows ──
+function addProductRow() {
+    const products = oppProducts[currentOppId] || [];
+    rowCount++;
+    const i    = rowCount;
+    const opts = products.map(p =>
+        `<option value="${p.productID}" data-opp-qty="${p.opp_qty}" data-uom="${p.productUOM || ''}">${p.productName}</option>`
+    ).join('');
+
+    const row = document.createElement('div');
+    row.className = 'product-row';
+    row.id        = `prow-${i}`;
+    row.innerHTML = `
+        <div class="form-group">
+            <label class="form-label-dt">Product *</label>
+            <select name="product_id[]" class="form-control-dt prod-select" required onchange="onProductChange(this, ${i})">
+                <option value="">Select Product</option>
+                ${opts}
+            </select>
+            <div class="opp-qty-hint" id="opp-hint-${i}"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label-dt">PO Quantity *</label>
+            <input type="number" name="product_qty[]" class="form-control-dt qty-input"
+                   min="1" placeholder="0" required oninput="recalc()">
+        </div>
+        <div class="form-group">
+            <label class="form-label-dt">Rate (₹) *</label>
+            <input type="number" name="product_rate[]" class="form-control-dt rate-input"
+                   min="0" step="0.01" placeholder="0.00" required oninput="recalc()">
+        </div>
+        <div class="form-group">
+            <label class="form-label-dt">Row Total</label>
+            <input type="number" name="product_total[]" class="form-control-dt row-total"
+                   readonly style="background:#F8FAFC;cursor:not-allowed;">
+        </div>
+        <button type="button" class="remove-row-btn" onclick="removeRow(${i})" title="Remove">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    document.getElementById('productRows').appendChild(row);
+    recalc();
+}
+
+function onProductChange(sel, rowIdx) {
+    const opt    = sel.options[sel.selectedIndex];
+    const oppQty = opt.dataset.oppQty;
+    const hint   = document.getElementById(`opp-hint-${rowIdx}`);
+    hint.innerHTML = oppQty
+        ? `Opp qty: <span>${parseFloat(oppQty).toLocaleString()}</span>`
+        : '';
+}
+
+function removeRow(i) {
+    const rows = document.querySelectorAll('.product-row');
+    if (rows.length <= 1) return;
+    document.getElementById(`prow-${i}`).remove();
+    recalc();
+}
+
+function recalc() {
+    const rows = document.querySelectorAll('.product-row');
+    let totalQty = 0, totalVal = 0;
+
+    rows.forEach(row => {
+        const qty  = parseFloat(row.querySelector('.qty-input').value)  || 0;
+        const rate = parseFloat(row.querySelector('.rate-input').value) || 0;
+        const tot  = qty * rate;
+        row.querySelector('.row-total').value = tot.toFixed(2);
+        totalQty += qty;
+        totalVal += tot;
+    });
+
+    document.getElementById('totalProducts').textContent = rows.length;
+    document.getElementById('totalQty').textContent      = totalQty.toLocaleString();
+    document.getElementById('totalVal').textContent      = totalVal.toLocaleString('en-IN', {maximumFractionDigits:2});
+    document.getElementById('poTotalValue').value        = totalVal.toFixed(2);
+}
+
+// ── Form validation ──
+document.getElementById('poForm').addEventListener('submit', function(e) {
+    const rows = document.querySelectorAll('.product-row');
+    if (rows.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one product.');
+        return;
+    }
+    const selected = Array.from(document.querySelectorAll('[name="product_id[]"]'))
+                         .map(s => s.value).filter(Boolean);
+    if (new Set(selected).size !== selected.length) {
+        e.preventDefault();
+        alert('Duplicate products detected. Each product can appear only once per PO.');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+{% block title %}Accounts & Customers{% endblock %}
+{% block content %}
+<style>
+  body, .main-content { background: #F6FAFD; }
+
+  .page-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 28px;
+  }
+  .page-title { font-size: 22px; font-weight: 800; color: #0A1931; margin: 0; letter-spacing: -0.3px; }
+  .page-sub   { font-size: 13px; color: #4A7FA7; margin: 4px 0 0; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #1A3D63; color: #fff; padding: 9px 18px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(10,25,49,0.18);
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #0A1931; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #fff; color: #1A3D63; padding: 9px 18px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    text-decoration: none; border: 1.5px solid #B3CFE5; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .btn-secondary:hover { background: #F6FAFD; border-color: #4A7FA7; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; margin-bottom: 28px; }
+
+  .kpi-card {
+    background: #fff; border: 1.5px solid #B3CFE5; border-radius: 14px;
+    padding: 20px 24px; display: flex; align-items: center; gap: 18px;
+    box-shadow: 0 1px 4px rgba(10,25,49,0.06);
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--accent);
+  }
+  .kpi-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: var(--accent-light); display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .kpi-icon i { font-size: 20px; color: var(--accent); }
+  .kpi-val  { font-size: 26px; font-weight: 800; color: #0A1931; line-height: 1; }
+  .kpi-label{ font-size: 12px; color: #4A7FA7; margin-top: 4px; font-weight: 500; }
+
+  .panel {
+    background: #fff; border: 1.5px solid #B3CFE5; border-radius: 14px;
+    overflow: hidden; box-shadow: 0 1px 4px rgba(10,25,49,0.06);
+  }
+  .panel-header {
+    padding: 16px 22px; border-bottom: 1.5px solid #B3CFE5;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #F6FAFD;
+  }
+  .panel-title { font-size: 14px; font-weight: 700; color: #0A1931; margin: 0; }
+
+  .search-input {
+    padding: 7px 13px; border: 1.5px solid #B3CFE5; border-radius: 8px;
+    font-size: 13px; width: 220px; outline: none; background: #fff; color: #0A1931;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: #4A7FA7; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: #F6FAFD; border-bottom: 1.5px solid #B3CFE5; }
+  th { padding: 10px 16px; text-align: left; color: #4A7FA7; font-weight: 700;
+       font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  th.center { text-align: center; }
+
+  .acct-row { border-bottom: 1px solid #EAF2FA; cursor: pointer; transition: background 0.12s; }
+  .acct-row:hover { background: #F0F7FF; }
+  td { padding: 13px 16px; color: #0A1931; vertical-align: middle; }
+  td.center { text-align: center; }
+  .acct-name { font-weight: 700; color: #0A1931; font-size: 13px; }
+  .acct-detail { font-size: 12px; color: #4A7FA7; margin-top: 2px; }
+
+  .badge-blue {
+    background: #B3CFE5; color: #1A3D63; padding: 3px 11px;
+    border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block;
+  }
+  .badge-count {
+    background: #EAF2FA; color: #1A3D63; padding: 3px 11px;
+    border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block;
+  }
+
+  .expand-row td { padding: 0; background: #F6FAFD; }
+  .expand-inner { padding: 20px 24px 24px 48px; }
+
+  .sub-table th { color: #4A7FA7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sub-table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid #EAF2FA; }
+  .sub-table tr:last-child td { border-bottom: none; }
+
+  .chevron { font-size: 11px; color: #4A7FA7; transition: transform 0.2s; display: inline-block; }
+
+  .pagination-bar {
+    padding: 12px 22px; display: flex; justify-content: space-between;
+    align-items: center; border-top: 1.5px solid #B3CFE5; background: #F6FAFD;
+  }
+  .page-info { font-size: 12px; color: #4A7FA7; }
+  .page-btn {
+    padding: 5px 12px; border: 1.5px solid #B3CFE5; background: #fff;
+    border-radius: 7px; font-size: 12px; cursor: pointer; color: #1A3D63;
+    font-weight: 600; transition: background 0.12s;
+  }
+  .page-btn:hover { background: #EAF2FA; }
+</style>
+
+<div style="padding: 28px 32px;">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title"><i class="bi bi-building" style="color:#4A7FA7; margin-right:8px;"></i>Accounts & Customers</h1>
+      <p class="page-sub">Expand an account to see its customers and opportunity breakdown</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a href="/accounts/new" class="btn-primary"><i class="bi bi-plus-lg"></i> Add Account</a>
+      <a href="/customers/new" class="btn-secondary"><i class="bi bi-person-plus"></i> Add Customer</a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--accent:#1A3D63; --accent-light:#EAF2FA;">
+      <div class="kpi-icon"><i class="bi bi-building"></i></div>
+      <div><div class="kpi-val">{{ stats.total_accounts or 0 }}</div><div class="kpi-label">Total Accounts</div></div>
+    </div>
+    <div class="kpi-card" style="--accent:#4A7FA7; --accent-light:#EAF2FA;">
+      <div class="kpi-icon"><i class="bi bi-people"></i></div>
+      <div><div class="kpi-val">{{ stats.total_customers or 0 }}</div><div class="kpi-label">Total Customers</div></div>
+    </div>
+    <div class="kpi-card" style="--accent:#0A1931; --accent-light:#B3CFE530;">
+      <div class="kpi-icon"><i class="bi bi-briefcase"></i></div>
+      <div><div class="kpi-val">{{ total_opportunities }}</div><div class="kpi-label">Total Opportunities</div></div>
+    </div>
+  </div>
+
+  <!-- Accounts Table -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title"><i class="bi bi-table" style="margin-right:6px; color:#4A7FA7;"></i>Accounts</span>
+      <input class="search-input" id="accountSearch" type="text" placeholder="🔍  Search accounts…" oninput="applySearch()">
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px;"></th>
+            <th>Account</th>
+            <th class="center">Customers</th>
+            <th class="center">Opportunities</th>
+          </tr>
+        </thead>
+        <tbody id="accountBody">
+          {% for a in accounts %}
+          <tr class="acct-row" id="row-{{ a.accountID }}" onclick="toggleExpand({{ a.accountID }})">
+            <td class="center" style="padding:13px 8px 13px 16px;">
+              <i id="chevron-{{ a.accountID }}" class="bi bi-chevron-right chevron"></i>
+            </td>
+            <td>
+              <div class="acct-name">{{ a.accountName }}</div>
+              {% if a.account_details %}<div class="acct-detail">{{ a.account_details }}</div>{% endif %}
+            </td>
+            <td class="center"><span class="badge-count">{{ a.customer_count }}</span></td>
+            <td class="center"><span class="badge-blue">{{ a.opp_count }}</span></td>
+          </tr>
+          <tr class="expand-row" id="expand-{{ a.accountID }}" style="display:none; border-bottom:1.5px solid #B3CFE5;">
+            <td colspan="4">
+              <div class="expand-inner" id="expand-content-{{ a.accountID }}">
+                <span style="color:#4A7FA7; font-size:13px;">Loading…</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination-bar">
+      <span class="page-info" id="pageInfo"></span>
+      <div style="display:flex; gap:6px;">
+        <button class="page-btn" onclick="changePage(-1)">‹</button>
+        <button class="page-btn" onclick="changePage(1)">›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const PAGE_SIZE = 15;
+let currentPage = 1;
+let visiblePairs = [];
+const chartInstances = {};
+
+function getAccountPairs() {
+  const rows = Array.from(document.getElementById('accountBody').querySelectorAll('tr'));
+  const pairs = [];
+  for (let i = 0; i < rows.length; i += 2) pairs.push({ main: rows[i], expand: rows[i+1] });
+  return pairs;
+}
+
+function applySearch() {
+  const q = document.getElementById('accountSearch').value.toLowerCase();
+  visiblePairs = getAccountPairs().filter(p => !q || p.main.textContent.toLowerCase().includes(q));
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
+  getAccountPairs().forEach(p => { p.main.style.display = 'none'; p.expand.style.display = 'none'; });
+  const start = (currentPage - 1) * PAGE_SIZE;
+  visiblePairs.slice(start, start + PAGE_SIZE).forEach(p => {
+    p.main.style.display = '';
+    const id = p.main.id.replace('row-', '');
+    if (document.getElementById('expand-' + id).dataset.open === '1')
+      p.expand.style.display = '';
+  });
+  const total = visiblePairs.length;
+  document.getElementById('pageInfo').textContent = total === 0 ? 'No results'
+    : `Showing ${Math.min((currentPage-1)*PAGE_SIZE+1, total)}–${Math.min(currentPage*PAGE_SIZE, total)} of ${total}`;
+}
+
+function changePage(dir) {
+  const max = Math.ceil(visiblePairs.length / PAGE_SIZE) || 1;
+  currentPage = Math.max(1, Math.min(max, currentPage + dir));
+  renderPage();
+}
+
+function toggleExpand(id) {
+  const expandRow = document.getElementById('expand-' + id);
+  const chevron   = document.getElementById('chevron-' + id);
+  const isOpen    = expandRow.dataset.open === '1';
+  if (isOpen) {
+    expandRow.style.display = 'none';
+    expandRow.dataset.open  = '0';
+    chevron.style.transform = '';
+  } else {
+    expandRow.style.display = '';
+    expandRow.dataset.open  = '1';
+    chevron.style.transform = 'rotate(90deg)';
+    loadCustomers(id);
+  }
+}
+
+function loadCustomers(id) {
+  const content = document.getElementById('expand-content-' + id);
+  if (content.dataset.loaded === '1') return;
+  fetch('/accounts/' + id + '/customers')
+    .then(r => r.json())
+    .then(data => {
+      content.dataset.loaded = '1';
+      if (!data.customers || data.customers.length === 0) {
+        content.innerHTML = '<p style="color:#4A7FA7; font-size:13px; margin:0;"><i class="bi bi-info-circle"></i> No customers under this account.</p>';
+        return;
+      }
+      renderExpand(content, data.customers, id);
+    })
+    .catch(() => {
+      content.innerHTML = '<p style="color:#DC2626; font-size:13px; margin:0;">Failed to load customers.</p>';
+    });
+}
+
+function renderExpand(container, customers, accountId) {
+  const hasOpps = customers.some(c => c.opp_count > 0);
+
+  let html = `<div style="display:flex; gap:32px; align-items:flex-start;">
+    <div style="flex:1; overflow-x:auto;">
+      <div style="font-size:11px; font-weight:700; color:#4A7FA7; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">
+        <i class="bi bi-people" style="margin-right:5px;"></i>Customers
+      </div>
+      <table class="sub-table" style="width:100%; border-collapse:collapse;">
+        <thead><tr style="border-bottom:1.5px solid #B3CFE5; background:#F6FAFD;">
+          <th style="padding:8px 12px; text-align:left;">Customer Name</th>
+          <th style="padding:8px 12px; text-align:center;">Opportunities</th>
+        </tr></thead>
+        <tbody>`;
+
+  customers.forEach(c => {
+    html += `<tr>
+      <td style="padding:9px 12px;">
+        <span style="font-weight:600; color:#0A1931;">${c.customerName}</span>
+      </td>
+      <td style="padding:9px 12px; text-align:center;">
+        <span style="background:#EAF2FA; color:#1A3D63; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700;">${c.opp_count}</span>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+
+  if (hasOpps) {
+    html += `<div style="width:210px; flex-shrink:0; padding-top:4px;">
+      <div style="font-size:11px; font-weight:700; color:#4A7FA7; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:10px;">
+        <i class="bi bi-pie-chart" style="margin-right:5px;"></i>Opps by Customer
+      </div>
+      <canvas id="pie-${accountId}" width="210" height="210"></canvas>
+    </div>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  if (hasOpps) {
+    const filtered = customers.filter(c => c.opp_count > 0);
+    const labels = filtered.map(c => c.customerName);
+    const values = filtered.map(c => c.opp_count);
+    const colors = ['#1A3D63','#4A7FA7','#B3CFE5','#0A1931','#6BA3C9','#2E5F8A','#8DBAD9','#3A7CA5'];
+    if (chartInstances[accountId]) chartInstances[accountId].destroy();
+    const ctx = document.getElementById('pie-' + accountId).getContext('2d');
+    chartInstances[accountId] = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 2, borderColor: '#F6FAFD' }]
+      },
+      options: {
+        responsive: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8, boxWidth: 12, color: '#0A1931' } }
+        }
+      }
+    });
+  }
+}
+
+visiblePairs = getAccountPairs();
+renderPage();
+</script>
+{% endblock %}

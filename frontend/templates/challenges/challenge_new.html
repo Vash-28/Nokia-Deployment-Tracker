@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set active_page = "challenges" %}
+
+{% block title %}Add Challenge{% endblock %}
+
+{% block head %}
+<style>
+    .back-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12.5px; color: #64748B; text-decoration: none;
+        margin-bottom: 18px; transition: color 0.15s;
+    }
+    .back-link:hover { color: #0A1931; }
+    .form-actions {
+        display: flex; gap: 12px; justify-content: flex-end;
+        padding-top: 14px; border-top: 1px solid #E2E8F0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<a href="/challenges" class="back-link">
+    <i class="bi bi-arrow-left"></i> Back to Challenges
+</a>
+
+<div class="page-header">
+    <div>
+        <h1>Add Challenge</h1>
+        <p>Log a new deployment challenge to track and plan against</p>
+    </div>
+</div>
+
+<form method="POST" action="/challenges/new" id="challengeForm" style="max-width:680px;">
+    <div class="panel">
+        <div class="form-divider">Challenge Details</div>
+        <div style="display:flex;flex-direction:column;gap:18px;">
+
+            <div class="form-group">
+                <label class="form-label-dt">Challenge Name / Description *</label>
+                <textarea name="challengeName" class="form-control-dt" rows="4"
+                          placeholder="Describe the challenge clearly, e.g. 'Customs clearance delays at NCR hub causing 2-week backlog on material delivery'"
+                          required style="resize:vertical;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label-dt">Status</label>
+                <select name="isActive" class="form-control-dt">
+                    <option value="1" selected>Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <a href="/challenges" class="btn-outline-dt">Cancel</a>
+        <button type="submit" class="btn-primary-dt">
+            <i class="bi bi-check-lg"></i> Create Challenge
+        </button>
+    </div>
+</form>
+
+{% endblock %}

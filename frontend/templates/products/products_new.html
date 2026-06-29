@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}New Product{% endblock %}
+{% block content %}
+<div style="padding:28px 32px; max-width:640px;">
+  <div style="margin-bottom:24px;">
+    <a href="/products" style="font-size:13px; color:#64748B; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+      <i class="bi bi-arrow-left"></i> Back to Products
+    </a>
+  </div>
+  <div style="background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:28px 32px;">
+    <h1 style="font-size:18px; font-weight:700; color:#0F172A; margin:0 0 6px;">New Product</h1>
+    <p style="font-size:13px; color:#64748B; margin:0 0 24px;">Add a new product to the catalogue</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div style="padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px;
+                  background:{{ '#DCFCE7' if cat=='success' else '#FEE2E2' }};
+                  color:{{ '#166534' if cat=='success' else '#991B1B' }};">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST" action="/products/new">
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Product Name <span style="color:#EF4444;">*</span></label>
+        <input name="productName" required type="text" placeholder="e.g. AirScale Macro"
+          style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; box-sizing:border-box;">
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+        <div>
+          <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">UOM <span style="color:#94A3B8; font-weight:400;">(unit)</span></label>
+          <input name="productUOM" type="text" maxlength="4" placeholder="e.g. PCS"
+            style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">HSN Code</label>
+          <input name="productHSN" type="text" placeholder="e.g. 8517"
+            style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Division <span style="color:#EF4444;">*</span></label>
+        <select name="divisionID" required style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; background:#fff; box-sizing:border-box;">
+          <option value="">Select division…</option>
+          {% for d in divisions %}
+          <option value="{{ d.divisionID }}">{{ d.divisionName }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button type="submit" style="background:#1A56DB; color:#fff; border:none; padding:9px 20px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer;">Create Product</button>
+        <a href="/products" style="background:#fff; color:#374151; border:1px solid #D1D5DB; padding:9px 20px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; display:inline-flex; align-items:center;">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

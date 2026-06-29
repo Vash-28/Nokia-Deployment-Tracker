@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% set active_page = "po" %}
+
+{% block title %}Purchase Orders{% endblock %}
+
+{% block head %}
+<style>
+    .prog-bar-wrap {
+        background: #E2E8F0; border-radius: 20px;
+        height: 7px; width: 110px; overflow: hidden;
+    }
+    .prog-bar-fill {
+        height: 100%; border-radius: 20px;
+        background: linear-gradient(90deg, #1A3D63, #4A7FA7);
+        transition: width 0.4s;
+    }
+    .prog-label { font-size: 11px; color: #64748B; margin-top: 3px; }
+
+    .product-chip {
+        background: #EFF6FF; border: 1px solid #BFDBFE;
+        border-radius: 6px; padding: 4px 10px;
+        font-size: 12px; color: #1D4ED8; font-weight: 500;
+    }
+
+    .expand-btn i { transition: transform 0.2s; display: inline-block; }
+    .expand-btn.open i { transform: rotate(90deg); }
+
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #E2E8F0; border-radius: 8px;
+        padding: 6px 12px; font-size: 13px; outline: none;
+    }
+
+    /* Action button in sub-row */
+    .btn-track {
+        background: #0A1931; color: #fff;
+        border: none; border-radius: 6px;
+        padding: 5px 12px; font-size: 12px;
+        cursor: pointer; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 5px;
+        transition: background 0.15s;
+        white-space: nowrap;
+    }
+    .btn-track:hover { background: #1A3D63; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="page-header">
+    <div>
+        <h1>Purchase Orders</h1>
+        <p>Track PO-level deployment progress across all opportunities</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn-outline-dt" onclick="exportTable()">
+            <i class="bi bi-download"></i> Export
+        </button>
+        <a href="/po/create" class="btn-primary-dt">
+            <i class="bi bi-plus-lg"></i> Add PO
+        </a>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-row">
+    <div class="kpi-card accent">
+        <div class="kpi-label">Total POs</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+        <div class="kpi-sub">All purchase orders</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Initialized</div>
+        <div class="kpi-value">{{ stats.initialized }}</div>
+        <div class="kpi-sub">Not yet started</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Ongoing</div>
+        <div class="kpi-value">{{ stats.ongoing }}</div>
+        <div class="kpi-sub">Active deployment</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Completed</div>
+        <div class="kpi-value">{{ stats.completed }}</div>
+        <div class="kpi-sub">Fully deployed</div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="panel" style="padding:16px 20px;">
+    <div class="filter-bar">
+        <select class="filter-select" id="filterAccount" onchange="applyFilters()">
+            <option value="">All Accounts</option>
+            {% for a in accounts %}
+            <option value="{{ a.accountName }}">{{ a.accountName }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="filterCustomer" onchange="applyFilters()">
+            <option value="">All Customers</option>
+            {% for c in customers %}
+            <option value="{{ c.customerName }}">{{ c.customerName }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="filterOpp" onchange="applyFilters()">
+            <option value="">All Opportunities</option>
+            {% for o in opportunities %}
+            <option value="{{ o.opportunityName }}">{{ o.opportunityName }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn-outline-dt" onclick="clearFilters()">
+            <i class="bi bi-x-circle"></i> Clear
+        </button>
+        <div style="margin-left:auto;">
+            <input type="text" id="searchInput" class="filter-select"
+                   placeholder="&#128269;  Search..." oninput="applyFilters()"
+                   style="min-width:220px;">
+        </div>
+    </div>
+</div>
+
+<!-- PO Table -->
+<div class="panel" style="padding:0;overflow:hidden;">
+    <div style="padding:18px 20px 0;" class="panel-header">
+        <span class="panel-title">All Purchase Orders</span>
+        <span style="font-size:12px;color:#94A3B8;">
+            Click <i class="bi bi-chevron-right" style="font-size:10px;"></i> to see product breakdown
+        </span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="dt-table" id="poTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;"></th>
+                    <th>Account</th>
+                    <th>Customer</th>
+                    <th>Opportunity</th>
+                    <th>PO Name</th>
+                    <th>PO Qty</th>
+                    <th>Deployed</th>
+                    <th>Valid Till</th>
+                    <th>Completion</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for po in pos %}
+            <tr class="po-row"
+                data-account="{{ po.account_name }}"
+                data-customer="{{ po.customerName }}"
+                data-opp="{{ po.opportunityName }}"
+                data-poname="{{ po.pOName }}">
+                <td>
+                    <button class="expand-btn" onclick="toggleProducts(this, {{ po.poID }})">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </td>
+                <td>{{ po.account_name }}</td>
+                <td>{{ po.customerName }}</td>
+                <td style="font-size:12.5px;color:#64748B;">{{ po.opportunityName }}</td>
+                <td style="font-weight:500;">{{ po.pOName }}</td>
+                <td>{{ '{:,.0f}'.format(po.total_qty) }}</td>
+                <td>{{ '{:,.0f}'.format(po.total_deployed) }}</td>
+                <td>{{ po.endDate.strftime('%d %b %Y') if po.endDate else '—' }}</td>
+                <td>
+                    {% set pct = ((po.total_deployed / po.total_qty * 100) | int) if po.total_qty > 0 else 0 %}
+                    <div class="prog-bar-wrap">
+                        <div class="prog-bar-fill" style="width:{{ pct }}%"></div>
+                    </div>
+                    <div class="prog-label">{{ pct }}%</div>
+                </td>
+                <td>
+                    {% if po.endDate and po.endDate < now %}
+                        <span class="badge-status badge-complete">Completed</span>
+                    {% elif po.startDate and po.startDate <= now %}
+                        <span class="badge-status badge-ongoing">Ongoing</span>
+                    {% else %}
+                        <span class="badge-status badge-init">Initialized</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <!-- Product sub-rows (loaded on expand) -->
+            <tr class="product-subrows-{{ po.poID }}" style="display:none;">
+                <td colspan="10" style="padding:0;">
+                    <div style="padding:8px 0 12px 0;">
+                        <div style="padding:8px 20px 6px 36px;font-size:11px;color:#94A3B8;font-weight:600;letter-spacing:0.05em;">
+                            PRODUCTS IN THIS PO
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#F8FAFC;">
+                                    <th style="padding:8px 14px 8px 36px;font-size:11px;color:#64748B;font-weight:600;">Product</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Opp Qty</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">PO Qty</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Deployed</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Balance</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prod-tbody-{{ po.poID }}">
+                                <tr><td colspan="6" style="padding:14px 36px;color:#94A3B8;font-size:12px;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #F1F5F9;">
+        <span style="font-size:12px;color:#94A3B8;" id="tableInfo"></span>
+        <div style="display:flex;gap:6px;" id="paginationBtns"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PAGE_SIZE = 15;
+let currentPage = 1;
+let filteredRows = [];
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('tr.po-row'));
+}
+
+function applyFilters() {
+    const acct   = document.getElementById('filterAccount').value.toLowerCase();
+    const cust   = document.getElementById('filterCustomer').value.toLowerCase();
+    const opp    = document.getElementById('filterOpp').value.toLowerCase();
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    // Collapse all sub-rows before re-filtering
+    document.querySelectorAll('[class^="product-subrows-"]').forEach(r => r.style.display = 'none');
+    document.querySelectorAll('.expand-btn').forEach(b => b.classList.remove('open'));
+
+    filteredRows = getAllRows().filter(row => {
+        const rAcct = row.dataset.account.toLowerCase();
+        const rCust = row.dataset.customer.toLowerCase();
+        const rOpp  = row.dataset.opp.toLowerCase();
+        const rPO   = row.dataset.poname.toLowerCase();
+        return (!acct   || rAcct === acct)
+            && (!cust   || rCust === cust)
+            && (!opp    || rOpp  === opp)
+            && (!search || rAcct.includes(search) || rCust.includes(search)
+                        || rOpp.includes(search)  || rPO.includes(search));
+    });
+    currentPage = 1;
+    renderTable();
+}
+
+function renderTable() {
+    getAllRows().forEach(r => {
+        r.style.display = 'none';
+        const poId = getPoId(r);
+        const sub  = document.querySelector(`.product-subrows-${poId}`);
+        if (sub) sub.style.display = 'none';
+    });
+
+    const start    = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filteredRows.slice(start, start + PAGE_SIZE);
+    pageRows.forEach(r => r.style.display = '');
+
+    renderInfo(start, pageRows.length);
+    renderPagination();
+}
+
+function getPoId(row) {
+    const btn = row.querySelector('.expand-btn');
+    if (!btn) return null;
+    const m = btn.getAttribute('onclick').match(/\d+/);
+    return m ? m[0] : null;
+}
+
+function renderInfo(start, count) {
+    const total = filteredRows.length;
+    document.getElementById('tableInfo').textContent =
+        total === 0 ? 'No results' : `Showing ${start + 1}–${start + count} of ${total}`;
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+    const container  = document.getElementById('paginationBtns');
+    container.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const btn = (label, page, disabled, active) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `padding:5px 11px;font-size:12px;border-radius:6px;cursor:pointer;
+            border:1px solid #E2E8F0;background:${active ? '#0A1931' : '#fff'};
+            color:${active ? '#fff' : '#334155'};`;
+        if (disabled) { b.disabled = true; b.style.opacity = '0.4'; }
+        b.onclick = () => { currentPage = page; renderTable(); };
+        return b;
+    };
+
+    container.appendChild(btn('‹', currentPage - 1, currentPage === 1, false));
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1)
+            container.appendChild(btn(i, i, false, i === currentPage));
+        else if (Math.abs(i - currentPage) === 2)
+            container.appendChild(Object.assign(document.createElement('span'),
+                { textContent: '…', style: 'padding:5px 4px;font-size:12px;color:#94A3B8;' }));
+    }
+    container.appendChild(btn('›', currentPage + 1, currentPage === totalPages, false));
+}
+
+function clearFilters() {
+    ['filterAccount','filterCustomer','filterOpp','searchInput'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    applyFilters();
+}
+
+// ── Product expand ──
+const loadedProducts = {};
+
+function toggleProducts(btn, poId) {
+    const subRow = document.querySelector(`.product-subrows-${poId}`);
+    const isOpen = subRow.style.display !== 'none';
+    btn.classList.toggle('open', !isOpen);
+    subRow.style.display = isOpen ? 'none' : '';
+
+    if (!isOpen && !loadedProducts[poId]) {
+        fetchProducts(poId);
+    }
+}
+
+function fetchProducts(poId) {
+    fetch(`/po/${poId}/products`)
+        .then(r => r.json())
+        .then(data => {
+            loadedProducts[poId] = true;
+            const tbody = document.getElementById(`prod-tbody-${poId}`);
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:14px 36px;color:#94A3B8;font-size:12px;">No products found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(p => {
+                const balance = p.po_qty - p.deployed;
+                return `
+                <tr style="border-top:1px solid #F1F5F9;">
+                    <td style="padding:11px 14px 11px 36px;">
+                        <span class="product-chip">${p.productName}</span>
+                    </td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${p.opp_qty.toLocaleString()}</td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${p.po_qty.toLocaleString()}</td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${p.deployed.toLocaleString()}</td>
+                    <td style="padding:11px 14px;font-size:12.5px;color:${balance > 0 ? '#0A1931' : '#22C55E'};">
+                        ${balance.toLocaleString()}
+                    </td>
+                    <td style="padding:11px 14px;">
+                        <a href="/po/tracking?po_id=${poId}&product_id=${p.productID}" class="btn-track">
+                            <i class="bi bi-graph-up"></i> Track
+                        </a>
+                    </td>
+                </tr>`;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById(`prod-tbody-${poId}`).innerHTML =
+                '<tr><td colspan="6" style="padding:14px 36px;color:#EF4444;font-size:12px;">Failed to load products</td></tr>';
+        });
+}
+
+function exportTable() {
+    window.location.href = '/po/export';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    filteredRows = getAllRows();
+    renderTable();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+{% set active_page = "po" %}
+
+{% block title %}PO Tracking{% endblock %}
+
+{% block head %}
+<style>
+    /* ── Context strip ── */
+    .context-strip {
+        background: #0A1931; border-radius: 12px;
+        padding: 14px 20px; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    }
+    .ctx-item {
+        display: flex; flex-direction: column;
+        padding: 0 18px; border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .ctx-item:first-child { padding-left: 0; }
+    .ctx-item:last-child  { border-right: none; }
+    .ctx-label { font-size: 9.5px; color: #B3CFE5; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; margin-bottom: 2px; }
+    .ctx-value { font-size: 12.5px; font-weight: 600; color: #fff; }
+    .btn-change-filter {
+        margin-left: auto; background: rgba(255,255,255,0.1);
+        border: none; color: #B3CFE5; border-radius: 8px;
+        padding: 7px 14px; font-size: 12px; cursor: pointer;
+        display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-change-filter:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+    /* ── Month scroll ── */
+    .month-scroll-wrap { overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; }
+    .month-scroll { display: flex; gap: 6px; min-width: max-content; }
+    .month-btn {
+        padding: 6px 14px; border-radius: 20px; font-size: 12px;
+        font-weight: 500; cursor: pointer; border: 1px solid #E2E8F0;
+        background: #fff; color: #475569; white-space: nowrap;
+        transition: all 0.15s; text-decoration: none; display: inline-block;
+    }
+    .month-btn:hover { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+    .month-btn.active { background: #0A1931; border-color: #0A1931; color: #fff; font-weight: 600; }
+    .month-btn.has-data { border-color: #4A7FA7; color: #1A3D63; }
+    .month-btn.has-data.active { background: #0A1931; color: #fff; }
+
+    /* ── Timeline ── */
+    .timeline-wrap {
+        background: #fff; border: 1px solid #E2E8F0;
+        border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+    }
+    .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .timeline-title { font-size: 12.5px; font-weight: 600; color: #0A1931; }
+    .timeline-stages {
+        display: flex; border-radius: 8px; overflow: hidden; height: 32px;
+    }
+    .tl-stage {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+        border-right: 1px solid rgba(255,255,255,0.3); transition: all 0.3s;
+    }
+    .tl-stage:last-child { border-right: none; }
+    .tl-stage.empty   { background: #F1F5F9; color: #CBD5E1; }
+    .tl-stage.partial { background: #B3CFE5; color: #1A3D63; }
+    .tl-stage.full    { background: #1A3D63; color: #fff; }
+
+    /* ── Main table ── */
+    .tracking-card {
+        background: #fff; border: 1px solid #E2E8F0;
+        border-radius: 12px; overflow: hidden; margin-bottom: 24px;
+    }
+    .tracking-card-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 20px; border-bottom: 2px solid #E2E8F0;
+        background: #FAFBFC;
+    }
+    .tracking-card-header .title { font-size: 13px; font-weight: 600; color: #0A1931; }
+    .tracking-card-header .sub   { font-size: 11.5px; color: #94A3B8; margin-top: 1px; }
+
+    /* Column group headers */
+    .tracking-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .tracking-table colgroup col { }
+
+    .tracking-table thead tr.group-row th {
+        padding: 8px 10px; font-size: 10.5px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.07em;
+        text-align: center; border-bottom: 1px solid #E2E8F0;
+    }
+    .tracking-table thead tr.group-row th.stage-col {
+        background: #FAFBFC; color: #64748B; text-align: left;
+    }
+    .th-nokia    { background: #EFF6FF; color: #1D4ED8; }
+    .th-customer { background: #FFFBEB; color: #92400E; }
+    .th-remark   { background: #F0FDF4; color: #166534; }
+
+    .tracking-table thead tr.col-row th {
+        padding: 7px 8px; font-size: 10px; font-weight: 600;
+        color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;
+        border-bottom: 2px solid #E2E8F0; text-align: center;
+        background: #FAFBFC;
+    }
+    .tracking-table thead tr.col-row th.stage-head { text-align: left; padding-left: 20px; }
+
+    /* Body */
+    .tracking-table tbody td {
+        padding: 9px 8px; font-size: 12.5px;
+        border-bottom: 1px solid #F1F5F9; vertical-align: middle;
+        text-align: center;
+    }
+    .tracking-table tbody tr:last-child td { border-bottom: none; }
+    .tracking-table tbody tr:hover td { background: #FAFBFF; }
+
+    .stage-name-cell { text-align: left !important; padding-left: 20px !important; }
+    .stage-name { font-size: 12px; font-weight: 500; color: #0A1931; }
+    .stage-nick { font-size: 10px; color: #94A3B8; margin-top: 1px; }
+
+    /* Qty inputs */
+    .qty-input {
+        width: 72px; border: 1px solid #E2E8F0;
+        border-radius: 6px; padding: 5px 7px;
+        font-size: 12.5px; color: #0A1931;
+        text-align: center; outline: none;
+        transition: border-color 0.15s; background: #fff;
+    }
+    .qty-input:focus { border-color: #1A56DB; }
+    .qty-input.overshoot { border-color: #F59E0B; background: #FFFBEB; }
+
+    /* Balance display */
+    .balance-val { font-size: 12.5px; font-weight: 600; }
+    .balance-val.neg  { color: #EF4444; }
+    .balance-val.zero { color: #22C55E; }
+    .balance-val.pos  { color: #64748B; }
+
+    /* Remark button + popover */
+    .remark-wrap { position: relative; display: inline-block; }
+    .remark-btn {
+        border: none; background: none; cursor: pointer;
+        padding: 4px 8px; border-radius: 6px; color: #94A3B8;
+        font-size: 13px; transition: all 0.15s;
+        display: flex; align-items: center; gap: 4px;
+    }
+    .remark-btn:hover { background: #F1F5F9; color: #475569; }
+    .remark-btn.has-remark { color: #1A56DB; }
+    .remark-btn.has-remark i { color: #1A56DB; }
+    .remark-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: #1A56DB; display: none;
+    }
+    .remark-btn.has-remark .remark-dot { display: inline-block; }
+
+    .remark-popover {
+        position: absolute; right: 0; top: calc(100% + 6px);
+        background: #fff; border: 1px solid #E2E8F0;
+        border-radius: 10px; padding: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        z-index: 100; width: 220px; display: none;
+    }
+    .remark-popover.open { display: block; }
+    .remark-popover label {
+        font-size: 10px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.06em; color: #94A3B8; display: block; margin-bottom: 6px;
+    }
+    .remark-popover textarea {
+        width: 100%; border: 1px solid #E2E8F0; border-radius: 6px;
+        padding: 7px 9px; font-size: 12px; resize: vertical;
+        min-height: 60px; outline: none; font-family: inherit;
+        color: #334155;
+    }
+    .remark-popover textarea:focus { border-color: #1A56DB; }
+    .remark-popover-actions {
+        display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px;
+    }
+    .btn-remark-done {
+        background: #0A1931; color: #fff; border: none;
+        border-radius: 6px; padding: 5px 12px; font-size: 11.5px;
+        cursor: pointer; font-weight: 500;
+    }
+    .btn-remark-clear {
+        background: #fff; color: #64748B; border: 1px solid #E2E8F0;
+        border-radius: 6px; padding: 5px 10px; font-size: 11.5px; cursor: pointer;
+    }
+
+    /* Save bar */
+    .save-bar {
+        position: fixed; bottom: 0; left: 220px; right: 0;
+        background: #fff; border-top: 1px solid #E2E8F0;
+        padding: 12px 28px; display: flex;
+        align-items: center; justify-content: space-between;
+        z-index: 500; transition: left 0.25s;
+    }
+    .save-bar-left { font-size: 12.5px; color: #64748B; }
+    .save-bar-left strong { color: #0A1931; }
+    .save-bar-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-save {
+        background: #0A1931; color: #fff; border: none;
+        border-radius: 8px; padding: 9px 24px; font-size: 13px;
+        font-weight: 600; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn-save:hover    { background: #1A3D63; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .save-status {
+        font-size: 12px; color: #22C55E; font-weight: 600;
+        display: none; align-items: center; gap: 5px;
+    }
+    .save-status.visible { display: flex; }
+    .main-content { padding-bottom: 72px; }
+    body:has(.sidebar.collapsed) .save-bar { left: 56px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Context strip -->
+<div class="context-strip">
+    <div class="ctx-item">
+        <span class="ctx-label">Account</span>
+        <span class="ctx-value">{{ context.account_name }}</span>
+    </div>
+    <div class="ctx-item">
+        <span class="ctx-label">Customer</span>
+        <span class="ctx-value">{{ context.customerName }}</span>
+    </div>
+    <div class="ctx-item">
+        <span class="ctx-label">Opportunity</span>
+        <span class="ctx-value">{{ context.opportunityName }}</span>
+    </div>
+    <div class="ctx-item">
+        <span class="ctx-label">PO</span>
+        <span class="ctx-value">{{ context.pOName }}</span>
+    </div>
+    <div class="ctx-item">
+        <span class="ctx-label">Product</span>
+        <span class="ctx-value">{{ context.productName }}</span>
+    </div>
+    <button class="btn-change-filter" onclick="window.location.href='/milestone'">
+        <i class="bi bi-sliders"></i> Change
+    </button>
+</div>
+
+<!-- Month scroll -->
+<div class="month-scroll-wrap">
+    <div class="month-scroll">
+        {% for m in months %}
+        <a href="/po/tracking?po_id={{ po_id }}&product_id={{ product_id }}&month={{ m.value }}"
+           class="month-btn {{ 'active' if m.value == selected_month }} {{ 'has-data' if m.has_data }}">
+            {{ m.label }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="timeline-wrap">
+    <div class="timeline-header">
+        <div class="timeline-title">Stage Progress — {{ selected_month_label }}</div>
+        <div style="font-size:11.5px;color:#94A3B8;">
+            PO Qty: <strong style="color:#0A1931;">{{ context.po_qty | int }}</strong>
+            &nbsp;·&nbsp; Deployed: <strong style="color:#1A3D63;">{{ context.total_deployed | int }}</strong>
+        </div>
+    </div>
+    <div class="timeline-stages">
+        {% for stage in paired_milestones %}
+        <div class="tl-stage {{ 'full' if (stage.nokia.actual_qty or 0) > 0 or (stage.customer.actual_qty or 0) > 0 else 'empty' }}"
+             id="tl-{{ loop.index }}"
+             title="{{ stage.stage_name }}">
+            {{ stage.nickname or stage.stage_name[:5] }}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Tracking table -->
+<div class="tracking-card">
+    <div class="tracking-card-header">
+        <div>
+            <div class="title">Milestone Quantities — {{ selected_month_label }}</div>
+            <div class="sub">Plan and actual quantities per stage for Nokia and Customer scope</div>
+        </div>
+        <div style="font-size:11.5px;color:#94A3B8;">
+            Quarter: <strong style="color:#1A3D63;">{{ current_quarter }}</strong>
+        </div>
+    </div>
+
+    <table class="tracking-table">
+        <colgroup>
+            <col style="width:180px">
+            <!-- Nokia -->
+            <col style="width:80px"><col style="width:80px"><col style="width:70px">
+            <!-- Customer -->
+            <col style="width:80px"><col style="width:80px"><col style="width:70px">
+            <!-- Remarks -->
+            <col style="width:60px"><col style="width:60px">
+        </colgroup>
+        <thead>
+            <tr class="group-row">
+                <th class="stage-col" rowspan="2" style="text-align:left;padding-left:20px;border-right:2px solid #E2E8F0;">Stage</th>
+                <th class="th-nokia" colspan="3" style="border-right:2px solid #E2E8F0;">
+                    <i class="bi bi-circle-fill" style="font-size:7px;margin-right:4px"></i> Nokia Scope
+                </th>
+                <th class="th-customer" colspan="3" style="border-right:2px solid #E2E8F0;">
+                    <i class="bi bi-circle-fill" style="font-size:7px;margin-right:4px"></i> Customer Scope
+                </th>
+                <th class="th-remark" colspan="2">Remarks</th>
+            </tr>
+            <tr class="col-row">
+                <!-- Nokia -->
+                <th style="background:#EFF6FF;color:#1D4ED8;">Plan</th>
+                <th style="background:#EFF6FF;color:#1D4ED8;">Actual</th>
+                <th style="background:#EFF6FF;color:#1D4ED8;border-right:2px solid #E2E8F0;">Balance</th>
+                <!-- Customer -->
+                <th style="background:#FFFBEB;color:#92400E;">Plan</th>
+                <th style="background:#FFFBEB;color:#92400E;">Actual</th>
+                <th style="background:#FFFBEB;color:#92400E;border-right:2px solid #E2E8F0;">Balance</th>
+                <!-- Remarks -->
+                <th style="background:#F0FDF4;color:#166534;">Nokia</th>
+                <th style="background:#F0FDF4;color:#166534;">Cust.</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for stage in paired_milestones %}
+        {% set n = stage.nokia %}
+        {% set c = stage.customer %}
+        {% set n_balance = (n.plan_qty or 0) - (n.actual_qty or 0) %}
+        {% set c_balance = (c.plan_qty or 0) - (c.actual_qty or 0) %}
+        <tr data-stage="{{ loop.index }}">
+
+            <!-- Stage name -->
+            <td class="stage-name-cell" style="border-right:2px solid #E2E8F0;">
+                <div class="stage-name">{{ stage.stage_name }}</div>
+                {% if stage.nickname %}
+                <div class="stage-nick">{{ stage.nickname }}</div>
+                {% endif %}
+            </td>
+
+            <!-- Nokia Plan -->
+            <td style="background:#FAFEFF;">
+                <input type="number" class="qty-input"
+                       id="plan-{{ n.milestoneID }}"
+                       data-milestone-id="{{ n.milestoneID }}"
+                       data-scope="nokia"
+                       data-stage="{{ loop.index }}"
+                       value="{{ n.plan_qty or '' }}"
+                       min="0" placeholder="0"
+                       oninput="onPlanChange(this)">
+            </td>
+
+            <!-- Nokia Actual -->
+            <td style="background:#FAFEFF;">
+                <input type="number" class="qty-input"
+                       id="actual-{{ n.milestoneID }}"
+                       data-milestone-id="{{ n.milestoneID }}"
+                       data-plan-details-id="{{ n.plan_details_id }}"
+                       data-plan-qty="{{ n.plan_qty or 0 }}"
+                       data-scope="nokia"
+                       data-stage="{{ loop.index }}"
+                       value="{{ n.actual_qty if n.actual_qty is not none else '' }}"
+                       min="0" placeholder="0"
+                       oninput="onActualChange(this)">
+            </td>
+
+            <!-- Nokia Balance -->
+            <td style="background:#FAFEFF;border-right:2px solid #E2E8F0;">
+                <span class="balance-val {{ 'neg' if n_balance < 0 else ('zero' if n_balance == 0 else 'pos') }}"
+                      id="balance-nokia-{{ n.milestoneID }}">
+                    {{ n_balance }}
+                </span>
+            </td>
+
+            <!-- Customer Plan -->
+            <td style="background:#FFFEF5;">
+                <input type="number" class="qty-input"
+                       id="plan-{{ c.milestoneID }}"
+                       data-milestone-id="{{ c.milestoneID }}"
+                       data-scope="customer"
+                       data-stage="{{ loop.index }}"
+                       value="{{ c.plan_qty or '' }}"
+                       min="0" placeholder="0"
+                       oninput="onPlanChange(this)">
+            </td>
+
+            <!-- Customer Actual -->
+            <td style="background:#FFFEF5;">
+                <input type="number" class="qty-input"
+                       id="actual-{{ c.milestoneID }}"
+                       data-milestone-id="{{ c.milestoneID }}"
+                       data-plan-details-id="{{ c.plan_details_id }}"
+                       data-plan-qty="{{ c.plan_qty or 0 }}"
+                       data-scope="customer"
+                       data-stage="{{ loop.index }}"
+                       value="{{ c.actual_qty if c.actual_qty is not none else '' }}"
+                       min="0" placeholder="0"
+                       oninput="onActualChange(this)">
+            </td>
+
+            <!-- Customer Balance -->
+            <td style="background:#FFFEF5;border-right:2px solid #E2E8F0;">
+                <span class="balance-val {{ 'neg' if c_balance < 0 else ('zero' if c_balance == 0 else 'pos') }}"
+                      id="balance-customer-{{ c.milestoneID }}">
+                    {{ c_balance }}
+                </span>
+            </td>
+
+            <!-- Nokia Remark -->
+            <td style="background:#F8FFFA;">
+                <div class="remark-wrap">
+                    <button class="remark-btn {{ 'has-remark' if n.actual_remark }}"
+                            id="remark-btn-{{ n.milestoneID }}"
+                            onclick="toggleRemark('{{ n.milestoneID }}')"
+                            title="{{ n.actual_remark or 'Add remark' }}">
+                        <i class="bi bi-chat-left-text"></i>
+                        <span class="remark-dot"></span>
+                    </button>
+                    <div class="remark-popover" id="remark-pop-{{ n.milestoneID }}">
+                        <label>Nokia Remark</label>
+                        <textarea id="remark-{{ n.milestoneID }}"
+                                  placeholder="Add a remark...">{{ n.actual_remark or '' }}</textarea>
+                        <div class="remark-popover-actions">
+                            <button class="btn-remark-clear" onclick="clearRemark('{{ n.milestoneID }}')">Clear</button>
+                            <button class="btn-remark-done" onclick="doneRemark('{{ n.milestoneID }}')">Done</button>
+                        </div>
+                    </div>
+                </div>
+            </td>
+
+            <!-- Customer Remark -->
+            <td style="background:#F8FFFA;">
+                <div class="remark-wrap">
+                    <button class="remark-btn {{ 'has-remark' if c.actual_remark }}"
+                            id="remark-btn-{{ c.milestoneID }}"
+                            onclick="toggleRemark('{{ c.milestoneID }}')"
+                            title="{{ c.actual_remark or 'Add remark' }}">
+                        <i class="bi bi-chat-left-text"></i>
+                        <span class="remark-dot"></span>
+                    </button>
+                    <div class="remark-popover" id="remark-pop-{{ c.milestoneID }}">
+                        <label>Customer Remark</label>
+                        <textarea id="remark-{{ c.milestoneID }}"
+                                  placeholder="Add a remark...">{{ c.actual_remark or '' }}</textarea>
+                        <div class="remark-popover-actions">
+                            <button class="btn-remark-clear" onclick="clearRemark('{{ c.milestoneID }}')">Clear</button>
+                            <button class="btn-remark-done" onclick="doneRemark('{{ c.milestoneID }}')">Done</button>
+                        </div>
+                    </div>
+                </div>
+            </td>
+
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Save bar -->
+<div class="save-bar" id="saveBar">
+    <div class="save-bar-left">
+        <strong>{{ context.pOName }}</strong> &nbsp;·&nbsp;
+        <strong>{{ context.productName }}</strong> &nbsp;·&nbsp;
+        {{ selected_month_label }}
+    </div>
+    <div class="save-bar-actions">
+        <div class="save-status" id="saveStatus">
+            <i class="bi bi-check-circle-fill"></i> Saved
+        </div>
+        <button class="btn-save" id="saveBtn" onclick="saveActuals()">
+            <i class="bi bi-floppy"></i> Save Changes
+        </button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PO_ID      = {{ po_id }};
+const PRODUCT_ID = {{ product_id }};
+const MONTH      = "{{ selected_month }}";
+
+// ── Init deltas on load ──
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.qty-input[id^="actual-"]').forEach(input => {
+        if (input.value !== '') onActualChange(input);
+    });
+    // Close popovers on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.remark-wrap')) closeAllPopovers();
+    });
+});
+
+// ── Plan change → update balance ──
+function onPlanChange(planInput) {
+    const mid = planInput.dataset.milestoneId;
+    const scope = planInput.dataset.scope;
+    const actualInput = document.getElementById(`actual-${mid}`);
+    const planQty = parseFloat(planInput.value) || 0;
+
+    if (actualInput) {
+        actualInput.dataset.planQty = planQty;
+        onActualChange(actualInput);
+    }
+
+    // Update balance
+    const actualQty = parseFloat(actualInput?.value) || 0;
+    updateBalance(mid, scope, planQty, actualQty);
+}
+
+// ── Actual change → update balance + timeline ──
+function onActualChange(input) {
+    const mid = input.dataset.milestoneId;
+    const scope = input.dataset.scope;
+    const stageIdx = input.dataset.stage;
+    const planQty = parseFloat(input.dataset.planQty) || 0;
+    const actualQty = parseFloat(input.value) || 0;
+
+    updateBalance(mid, scope, planQty, actualQty);
+    updateTimeline(stageIdx);
+
+    if (actualQty > planQty && planQty > 0) {
+        input.classList.add('overshoot');
+    } else {
+        input.classList.remove('overshoot');
+    }
+}
+
+// ── Balance ──
+function updateBalance(mid, scope, planQty, actualQty) {
+    const balEl = document.getElementById(`balance-${scope}-${mid}`);
+    if (!balEl) return;
+    const bal = planQty - actualQty;
+    balEl.textContent = bal;
+    balEl.className = 'balance-val ' + (bal < 0 ? 'neg' : bal === 0 ? 'zero' : 'pos');
+}
+
+// ── Timeline: stage is "full" if either Nokia or Customer has actual > 0 ──
+function updateTimeline(stageIdx) {
+    const tlEl = document.getElementById(`tl-${stageIdx}`);
+    if (!tlEl) return;
+    const nokiaActual   = parseFloat(document.querySelector(`input[data-stage="${stageIdx}"][data-scope="nokia"][id^="actual-"]`)?.value) || 0;
+    const custActual    = parseFloat(document.querySelector(`input[data-stage="${stageIdx}"][data-scope="customer"][id^="actual-"]`)?.value) || 0;
+    tlEl.className = 'tl-stage ' + ((nokiaActual > 0 || custActual > 0) ? 'full' : 'empty');
+}
+
+// ── Remark popover ──
+function toggleRemark(mid) {
+    const pop = document.getElementById(`remark-pop-${mid}`);
+    const isOpen = pop.classList.contains('open');
+    closeAllPopovers();
+    if (!isOpen) pop.classList.add('open');
+}
+
+function closeAllPopovers() {
+    document.querySelectorAll('.remark-popover.open').forEach(p => p.classList.remove('open'));
+}
+
+function doneRemark(mid) {
+    const val = document.getElementById(`remark-${mid}`).value.trim();
+    const btn = document.getElementById(`remark-btn-${mid}`);
+    btn.classList.toggle('has-remark', val.length > 0);
+    closeAllPopovers();
+}
+
+function clearRemark(mid) {
+    document.getElementById(`remark-${mid}`).value = '';
+    document.getElementById(`remark-btn-${mid}`).classList.remove('has-remark');
+    closeAllPopovers();
+}
+
+// ── Save ──
+function saveActuals() {
+    const btn = document.getElementById('saveBtn');
+    btn.disabled  = true;
+    btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:6px;vertical-align:middle;"></span>Saving...';
+
+    const records = [];
+    document.querySelectorAll('.qty-input[id^="actual-"]').forEach(actualInput => {
+        const mid = actualInput.dataset.milestoneId;
+        const planDetailsId = actualInput.dataset.planDetailsId;
+        const planInput = document.getElementById(`plan-${mid}`);
+        const remarkInput = document.getElementById(`remark-${mid}`);
+
+        records.push({
+            milestoneID:   parseInt(mid),
+            planDetailsID: parseInt(planDetailsId) || null,
+            planQty:       parseFloat(planInput?.value) || 0,
+            actualQty:     parseFloat(actualInput.value) || 0,
+            remark:        remarkInput?.value.trim() || '',
+        });
+    });
+
+    fetch('/po/tracking/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ po_id: PO_ID, product_id: PRODUCT_ID, month: MONTH, records })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="bi bi-floppy"></i> Save Changes';
+        if (data.success) {
+            const status = document.getElementById('saveStatus');
+            status.classList.add('visible');
+            setTimeout(() => status.classList.remove('visible'), 3000);
+        } else {
+            alert('Save failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(() => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="bi bi-floppy"></i> Save Changes';
+        alert('Network error — changes not saved.');
+    });
+}
+</script>
+{% endblock %}

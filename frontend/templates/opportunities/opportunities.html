@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% set active_page = "opportunities" %}
+
+{% block title %}Opportunities{% endblock %}
+
+{% block head %}
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<style>
+    /* ── Progress bar in table ── */
+    .prog-bar-wrap {
+        background: #E2E8F0; border-radius: 20px;
+        height: 7px; width: 110px; overflow: hidden;
+    }
+    .prog-bar-fill {
+        height: 100%; border-radius: 20px;
+        background: linear-gradient(90deg, #1A3D63, #4A7FA7);
+        transition: width 0.4s;
+    }
+    .prog-label { font-size: 11px; color: #64748B; margin-top: 3px; }
+
+    /* ── Sub-row product pills ── */
+    .sub-row-inner {
+        display: flex; align-items: center;
+        gap: 10px; flex-wrap: wrap;
+    }
+    .product-chip {
+        background: #EFF6FF; border: 1px solid #BFDBFE;
+        border-radius: 6px; padding: 4px 10px;
+        font-size: 12px; color: #1D4ED8; font-weight: 500;
+    }
+
+    /* ── DataTable overrides ── */
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #E2E8F0; border-radius: 8px;
+        padding: 6px 12px; font-size: 13px; outline: none;
+    }
+    .dataTables_wrapper .dataTables_filter input:focus { border-color: #1A56DB; }
+    .dataTables_wrapper .dataTables_length select {
+        border: 1px solid #E2E8F0; border-radius: 6px;
+        padding: 4px 8px; font-size: 13px;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #0A1931 !important; color: #fff !important;
+        border-radius: 6px; border: none !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #EFF6FF !important; color: #1A56DB !important;
+        border: none !important; border-radius: 6px;
+    }
+    table.dataTable thead th { border-bottom: 1px solid #E2E8F0 !important; }
+
+    /* expand chevron animation */
+    .expand-btn i { transition: transform 0.2s; display: inline-block; }
+    .expand-btn.open i { transform: rotate(90deg); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div class="page-header">
+    <div>
+        <h1>Opportunities</h1>
+        <p>All deals tracked across accounts and customers</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button class="btn-outline-dt" onclick="exportTable()">
+            <i class="bi bi-download"></i> Export
+        </button>
+        <a href="/opportunities/create" class="btn-primary-dt">
+            <i class="bi bi-plus-lg"></i> Add Opportunity
+        </a>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-row">
+    <div class="kpi-card accent">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+        <div class="kpi-sub">All opportunities</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Initialized</div>
+        <div class="kpi-value">{{ stats.initialized }}</div>
+        <div class="kpi-sub">Not yet started</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Ongoing</div>
+        <div class="kpi-value">{{ stats.ongoing }}</div>
+        <div class="kpi-sub">Active deployments</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Completed</div>
+        <div class="kpi-value">{{ stats.completed }}</div>
+        <div class="kpi-sub">Fully deployed</div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="panel" style="padding:16px 20px;">
+    <div class="filter-bar">
+        <select class="filter-select" id="filterAccount" onchange="applyFilters()">
+            <option value="">All Accounts</option>
+            {% for a in accounts %}
+            <option value="{{ a.accountName }}">{{ a.accountName }}</option>
+            {% endfor %}
+        </select>
+        <select class="filter-select" id="filterCustomer" onchange="applyFilters()">
+            <option value="">All Customers</option>
+            {% for c in customers %}
+            <option value="{{ c.customerName }}">{{ c.customerName }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn-outline-dt" onclick="clearFilters()">
+            <i class="bi bi-x-circle"></i> Clear
+        </button>
+        <div style="margin-left:auto;">
+            <input type="text" id="searchInput" class="filter-select" placeholder="&#128269;  Search..." oninput="applyFilters()" style="min-width:220px;">
+        </div>
+    </div>
+</div>
+
+<!-- Opportunities table -->
+<div class="panel" style="padding:0;overflow:hidden;">
+    <div style="padding:18px 20px 0;" class="panel-header">
+        <span class="panel-title">All Opportunities</span>
+        <span style="font-size:12px;color:#94A3B8;">Click <i class="bi bi-chevron-right" style="font-size:10px;"></i> to expand POs</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="dt-table" id="oppTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;"></th>
+                    <th>Account</th>
+                    <th>Customer</th>
+                    <th>Opportunity</th>
+                    <th>Opp No.</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Value (₹)</th>
+                    <th>POs</th>
+                    <th>Products</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for opp in opportunities %}
+            <tr class="opp-row" 
+                data-account="{{ opp.account_name }}" 
+                data-customer="{{ opp.customerName }}"
+                data-opp="{{ opp.opportunityName }}">
+                <td>
+                    {% if opp.po_count > 0 %}
+                    <button class="expand-btn" onclick="togglePOs(this, {{ opp.opportunityID }})">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    {% endif %}
+                </td>
+                <td>{{ opp.account_name }}</td>
+                <td>{{ opp.customerName }}</td>
+                <td style="font-weight:500;">{{ opp.opportunityName }}</td>
+                <td style="color:#64748B;font-size:12px;">{{ opp.opportunityNumber or '—' }}</td>
+                <td>{{ opp.startDate.strftime('%d %b %Y') if opp.startDate else '—' }}</td>
+                <td>{{ opp.endDate.strftime('%d %b %Y') if opp.endDate else '—' }}</td>
+                <td>{{ '{:,.0f}'.format(opp.totalValue) }}</td>
+                <td>
+                    <span style="background:#F1F5F9;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;">
+                        {{ opp.po_count }}
+                    </span>
+                </td>
+                <td>{{ opp.product_count }}</td>
+                <td>
+                    {% set today = now %}
+                    {% if opp.endDate and opp.endDate < today %}
+                        <span class="badge-status badge-complete">Completed</span>
+                    {% elif opp.startDate and opp.startDate <= today %}
+                        <span class="badge-status badge-ongoing">Ongoing</span>
+                    {% else %}
+                        <span class="badge-status badge-init">Initialized</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <!-- PO sub-rows injected by JS below -->
+            <tr class="po-subrows-{{ opp.opportunityID }}" style="display:none;">
+                <td colspan="11" style="padding:0;">
+                    <div class="po-subrow-container-{{ opp.opportunityID }}">
+                        <div style="padding:12px 20px 8px 32px;font-size:11px;color:#94A3B8;font-weight:600;letter-spacing:0.05em;">
+                            PURCHASE ORDERS
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#F8FAFC;">
+                                    <th style="padding:8px 14px 8px 32px;font-size:11px;color:#64748B;font-weight:600;">PO Name</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Products</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Opp Qty</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">PO Qty</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Deployed</th>
+                                    <th style="padding:8px 14px;font-size:11px;color:#64748B;font-weight:600;">Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody id="po-tbody-{{ opp.opportunityID }}">
+                                <tr><td colspan="6" style="padding:16px 32px;color:#94A3B8;font-size:12px;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination / info bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #F1F5F9;">
+        <span style="font-size:12px;color:#94A3B8;" id="tableInfo"></span>
+        <div style="display:flex;gap:6px;" id="paginationBtns"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Simple client-side table logic (no DataTables dependency needed) ──
+
+const PAGE_SIZE = 15;
+let currentPage = 1;
+let filteredRows = [];
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('tr.opp-row'));
+}
+
+function applyFilters() {
+    const acct    = document.getElementById('filterAccount').value.toLowerCase();
+    const cust    = document.getElementById('filterCustomer').value.toLowerCase();
+    const search  = document.getElementById('searchInput').value.toLowerCase();
+
+    filteredRows = getAllRows().filter(row => {
+        const rAcct = row.dataset.account.toLowerCase();
+        const rCust = row.dataset.customer.toLowerCase();
+        const rOpp  = row.dataset.opp.toLowerCase();
+        return (!acct   || rAcct.includes(acct))
+            && (!cust   || rCust.includes(cust))
+            && (!search || rAcct.includes(search) || rCust.includes(search) || rOpp.includes(search));
+    });
+    currentPage = 1;
+    renderTable();
+}
+
+function renderTable() {
+    const all = getAllRows();
+
+    // Hide all opp rows + their sub-rows
+    all.forEach(r => {
+        r.style.display = 'none';
+        const oppId = getOppId(r);
+        const sub = document.querySelector(`.po-subrows-${oppId}`);
+        if (sub) sub.style.display = 'none';
+    });
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filteredRows.slice(start, start + PAGE_SIZE);
+    pageRows.forEach(r => r.style.display = '');
+
+    renderInfo(start, pageRows.length);
+    renderPagination();
+}
+
+function getOppId(row) {
+    // Extract from the expand button's onclick
+    const btn = row.querySelector('.expand-btn');
+    if (!btn) return null;
+    const m = btn.getAttribute('onclick').match(/\d+/);
+    return m ? m[0] : null;
+}
+
+function renderInfo(start, count) {
+    const total = filteredRows.length;
+    document.getElementById('tableInfo').textContent =
+        total === 0 ? 'No results' :
+        `Showing ${start + 1}–${start + count} of ${total}`;
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+    const container = document.getElementById('paginationBtns');
+    container.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const btn = (label, page, disabled, active) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `
+            padding:5px 11px;font-size:12px;border-radius:6px;cursor:pointer;
+            border:1px solid #E2E8F0;background:${active ? '#0A1931' : '#fff'};
+            color:${active ? '#fff' : '#334155'};
+        `;
+        if (disabled) { b.disabled = true; b.style.opacity = '0.4'; }
+        b.onclick = () => { currentPage = page; renderTable(); };
+        return b;
+    };
+
+    container.appendChild(btn('‹', currentPage - 1, currentPage === 1, false));
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1)
+            container.appendChild(btn(i, i, false, i === currentPage));
+        else if (Math.abs(i - currentPage) === 2)
+            container.appendChild(Object.assign(document.createElement('span'), { textContent: '…', style: 'padding:5px 4px;font-size:12px;color:#94A3B8;' }));
+    }
+    container.appendChild(btn('›', currentPage + 1, currentPage === totalPages, false));
+}
+
+function clearFilters() {
+    document.getElementById('filterAccount').value  = '';
+    document.getElementById('filterCustomer').value = '';
+    document.getElementById('searchInput').value    = '';
+    applyFilters();
+}
+
+// ── PO Expand ──
+const loadedPOs = {};
+
+function togglePOs(btn, oppId) {
+    const subRow = document.querySelector(`.po-subrows-${oppId}`);
+    const isOpen = subRow.style.display !== 'none';
+
+    btn.classList.toggle('open', !isOpen);
+    subRow.style.display = isOpen ? 'none' : '';
+
+    if (!isOpen && !loadedPOs[oppId]) {
+        fetchPOs(oppId);
+    }
+}
+
+function fetchPOs(oppId) {
+    fetch(`/opportunities/${oppId}/pos`)
+        .then(r => r.json())
+        .then(data => {
+            loadedPOs[oppId] = true;
+            const tbody = document.getElementById(`po-tbody-${oppId}`);
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:14px 32px;color:#94A3B8;font-size:12px;">No POs found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(po => {
+                const pct = po.po_qty > 0 ? Math.min(100, Math.round((po.deployed / po.po_qty) * 100)) : 0;
+                return `
+                <tr style="border-top:1px solid #F1F5F9;">
+                    <td style="padding:11px 14px 11px 32px;font-size:12.5px;font-weight:500;color:#0A1931;">
+                        <a href="/po/${po.poID}" style="text-decoration:none;color:inherit;">${po.pOName}</a>
+                    </td>
+                    <td style="padding:11px 14px;">
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            ${po.products.map(p => `<span class="product-chip">${p}</span>`).join('')}
+                        </div>
+                    </td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${po.opp_qty.toLocaleString()}</td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${po.po_qty.toLocaleString()}</td>
+                    <td style="padding:11px 14px;font-size:12.5px;">${po.deployed.toLocaleString()}</td>
+                    <td style="padding:11px 14px;">
+                        <div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:${pct}%"></div></div>
+                        <div class="prog-label">${pct}% deployed</div>
+                    </td>
+                </tr>`;
+            }).join('');
+        })
+        .catch(() => {
+            document.getElementById(`po-tbody-${oppId}`).innerHTML =
+                '<tr><td colspan="6" style="padding:14px 32px;color:#EF4444;font-size:12px;">Failed to load POs</td></tr>';
+        });
+}
+
+// ── Export ──
+function exportTable() {
+    window.location.href = '/opportunities/export';
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+    filteredRows = getAllRows();
+    renderTable();
+});
+</script>
+{% endblock %}

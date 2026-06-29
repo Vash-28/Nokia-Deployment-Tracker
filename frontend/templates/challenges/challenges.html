@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% set active_page = "challenges" %}
+
+{% block title %}Challenges{% endblock %}
+
+{% block head %}
+<style>
+    .expand-btn i { transition: transform 0.2s; display: inline-block; }
+    .expand-btn.open i { transform: rotate(90deg); }
+
+    .plan-row td { padding: 0 !important; }
+    .plan-form-inner {
+        background: #F8FAFC; border-top: 2px solid #1A3D63;
+        padding: 20px 28px 20px 48px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        animation: slideDown 0.2s ease;
+    }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .plan-form-inner .span-2 { grid-column: span 2; }
+    .plan-form-actions {
+        grid-column: span 2; display: flex; justify-content: flex-end; gap: 10px;
+        padding-top: 6px; border-top: 1px solid #E2E8F0; margin-top: 4px;
+    }
+
+    .badge-active   { background: #DCFCE7; color: #166534; }
+    .badge-inactive { background: #F1F5F9; color: #64748B; }
+
+    .btn-plan {
+        background: #0A1931; color: #fff; border: none;
+        border-radius: 6px; padding: 5px 12px; font-size: 12px;
+        font-weight: 500; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 5px;
+        transition: background 0.15s;
+    }
+    .btn-plan:hover { background: #1A3D63; }
+    .btn-plan.open  { background: #1A3D63; }
+
+    .plans-count {
+        background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+        border-radius: 12px; padding: 2px 9px;
+        font-size: 11px; font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1>Challenges</h1>
+        <p>Track deployment challenges and mitigation plans</p>
+    </div>
+    <a href="/challenges/new" class="btn-primary-dt">
+        <i class="bi bi-plus-lg"></i> Add Challenge
+    </a>
+</div>
+
+<div class="kpi-row">
+    <div class="kpi-card accent">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value">{{ stats.total }}</div>
+        <div class="kpi-sub">All challenges</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Active</div>
+        <div class="kpi-value">{{ stats.active }}</div>
+        <div class="kpi-sub">Currently open</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">With Plans</div>
+        <div class="kpi-value">{{ stats.with_plans }}</div>
+        <div class="kpi-sub">Mitigation added</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">No Plan Yet</div>
+        <div class="kpi-value">{{ stats.no_plan }}</div>
+        <div class="kpi-sub">Needs attention</div>
+    </div>
+</div>
+
+<div class="panel" style="padding:14px 18px;">
+    <div class="filter-bar">
+        <input type="text" id="searchInput" class="filter-select"
+               placeholder="&#128269;  Search challenges..." oninput="applySearch()"
+               style="min-width:260px;">
+        <button class="btn-outline-dt"
+                onclick="document.getElementById('searchInput').value='';applySearch()">
+            <i class="bi bi-x-circle"></i> Clear
+        </button>
+    </div>
+</div>
+
+<div class="panel" style="padding:0;overflow:hidden;">
+    <div style="padding:16px 20px 0;" class="panel-header">
+        <span class="panel-title">All Challenges</span>
+        <span style="font-size:12px;color:#94A3B8;">
+            Click <i class="bi bi-chevron-right" style="font-size:10px;"></i> to see existing plans
+            &nbsp;·&nbsp; Click <strong>Plan</strong> to add a new mitigation
+        </span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="dt-table" id="challengeTable">
+            <thead>
+                <tr>
+                    <th style="width:36px;"></th>
+                    <th style="width:50px;">#</th>
+                    <th>Challenge</th>
+                    <th style="width:90px;">Status</th>
+                    <th style="width:100px;">Plans</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                    <th style="width:90px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for ch in challenges %}
+            <tr class="challenge-row" data-name="{{ ch.challengeName | lower }}">
+                <td>
+                    {% if ch.plan_count > 0 %}
+                    <button class="expand-btn" onclick="togglePlans(this, {{ ch.challengeID }})">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    {% endif %}
+                </td>
+                <td style="color:#94A3B8;font-size:12px;">{{ ch.challengeID }}</td>
+                <td style="font-weight:500;">{{ ch.challengeName }}</td>
+                <td>
+                    {% if ch.isActive %}
+                    <span class="badge-status badge-active">Active</span>
+                    {% else %}
+                    <span class="badge-status badge-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ch.plan_count > 0 %}
+                    <span class="plans-count">{{ ch.plan_count }} plan{{ 's' if ch.plan_count > 1 }}</span>
+                    {% else %}
+                    <span style="font-size:12px;color:#CBD5E1;">None</span>
+                    {% endif %}
+                </td>
+                <td style="font-size:12.5px;color:#64748B;">{{ ch.createdByName or '—' }}</td>
+                <td style="font-size:12px;color:#94A3B8;">
+                    {{ ch.createdAt.strftime('%d %b %Y') if ch.createdAt else '—' }}
+                </td>
+                <td>
+                    <button class="btn-plan" id="planbtn-{{ ch.challengeID }}"
+                            onclick="togglePlanForm(this, {{ ch.challengeID }})">
+                        <i class="bi bi-plus-circle"></i> Plan
+                    </button>
+                </td>
+            </tr>
+
+            <!-- Plan form slide-in -->
+            <tr class="plan-row" id="planrow-{{ ch.challengeID }}" style="display:none;">
+                <td colspan="8">
+                    <div class="plan-form-inner">
+                        <div class="form-group span-2">
+                            <label class="form-label-dt">Mitigation Plan *</label>
+                            <textarea id="plantext-{{ ch.challengeID }}"
+                                      class="form-control-dt" rows="3"
+                                      placeholder="Describe the mitigation plan in detail..."
+                                      style="resize:vertical;"></textarea>
+                        </div>
+                        <div class="plan-form-actions">
+                            <button class="btn-outline-dt"
+                                    onclick="closePlanForm({{ ch.challengeID }})">
+                                Cancel
+                            </button>
+                            <button class="btn-primary-dt"
+                                    onclick="submitPlan({{ ch.challengeID }})">
+                                <i class="bi bi-check-lg"></i> Save Plan
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+
+            <!-- Existing plans expand -->
+            <tr class="plans-subrow" id="plansub-{{ ch.challengeID }}" style="display:none;">
+                <td colspan="8" style="padding:0;">
+                    <div style="padding:8px 0 12px 0;">
+                        <div style="padding:8px 20px 6px 36px;font-size:11px;color:#94A3B8;font-weight:600;letter-spacing:0.05em;">
+                            MITIGATION PLANS
+                        </div>
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#F8FAFC;">
+                                    <th style="padding:7px 14px 7px 36px;font-size:11px;color:#64748B;font-weight:600;width:50px;">#</th>
+                                    <th style="padding:7px 14px;font-size:11px;color:#64748B;font-weight:600;">Plan</th>
+                                    <th style="padding:7px 14px;font-size:11px;color:#64748B;font-weight:600;width:130px;">Added By</th>
+                                    <th style="padding:7px 14px;font-size:11px;color:#64748B;font-weight:600;width:110px;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planlist-{{ ch.challengeID }}">
+                                <tr>
+                                    <td colspan="4" style="padding:12px 36px;color:#94A3B8;font-size:12px;">
+                                        Loading...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid #F1F5F9;">
+        <span style="font-size:12px;color:#94A3B8;" id="tableInfo"></span>
+        <div style="display:flex;gap:6px;" id="paginationBtns"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PAGE_SIZE = 15;
+let currentPage  = 1;
+let filteredRows = [];
+const loadedPlans = {};
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('tr.challenge-row'));
+}
+
+function applySearch() {
+    const q  = document.getElementById('searchInput').value.toLowerCase();
+    filteredRows = getAllRows().filter(r => !q || r.dataset.name.includes(q));
+    currentPage  = 1;
+    renderTable();
+}
+
+function renderTable() {
+    getAllRows().forEach(r => {
+        r.style.display = 'none';
+        const id = getChId(r);
+        ['planrow', 'plansub'].forEach(prefix => {
+            const el = document.getElementById(`${prefix}-${id}`);
+            if (el) el.style.display = 'none';
+        });
+        const btn = document.getElementById(`planbtn-${id}`);
+        if (btn) btn.classList.remove('open');
+        const exp = r.querySelector('.expand-btn');
+        if (exp) exp.classList.remove('open');
+    });
+
+    const start    = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filteredRows.slice(start, start + PAGE_SIZE);
+    pageRows.forEach(r => r.style.display = '');
+
+    renderInfo(start, pageRows.length);
+    renderPagination();
+}
+
+function getChId(row) {
+    const btn = row.querySelector('.btn-plan');
+    if (!btn) return null;
+    const m = btn.id.match(/\d+/);
+    return m ? m[0] : null;
+}
+
+function renderInfo(start, count) {
+    const total = filteredRows.length;
+    document.getElementById('tableInfo').textContent =
+        total === 0 ? 'No results' : `Showing ${start+1}–${start+count} of ${total}`;
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
+    const container  = document.getElementById('paginationBtns');
+    container.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const mkBtn = (label, page, disabled, active) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `padding:5px 11px;font-size:12px;border-radius:6px;cursor:pointer;
+            border:1px solid #E2E8F0;background:${active?'#0A1931':'#fff'};
+            color:${active?'#fff':'#334155'};`;
+        if (disabled) { b.disabled = true; b.style.opacity = '0.4'; }
+        b.onclick = () => { currentPage = page; renderTable(); };
+        return b;
+    };
+
+    container.appendChild(mkBtn('‹', currentPage-1, currentPage===1, false));
+    for (let i = 1; i <= totalPages; i++) {
+        if (i===1 || i===totalPages || Math.abs(i-currentPage)<=1)
+            container.appendChild(mkBtn(i, i, false, i===currentPage));
+        else if (Math.abs(i-currentPage)===2)
+            container.appendChild(Object.assign(document.createElement('span'),
+                {textContent:'…',style:'padding:5px 4px;font-size:12px;color:#94A3B8;'}));
+    }
+    container.appendChild(mkBtn('›', currentPage+1, currentPage===totalPages, false));
+}
+
+// ── Expand existing plans ──
+function togglePlans(btn, id) {
+    const sub    = document.getElementById(`plansub-${id}`);
+    const isOpen = sub.style.display !== 'none';
+    btn.classList.toggle('open', !isOpen);
+    sub.style.display = isOpen ? 'none' : '';
+    if (!isOpen && !loadedPlans[id]) fetchPlans(id);
+}
+
+function fetchPlans(id) {
+    fetch(`/challenges/${id}/plans`)
+        .then(r => r.json())
+        .then(data => {
+            loadedPlans[id] = true;
+            const tbody = document.getElementById(`planlist-${id}`);
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding:12px 36px;color:#94A3B8;font-size:12px;">No plans yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map((p, i) => `
+                <tr style="border-top:1px solid #F1F5F9;">
+                    <td style="padding:10px 14px 10px 36px;font-size:12px;color:#94A3B8;">${i+1}</td>
+                    <td style="padding:10px 14px;font-size:12.5px;color:#0A1931;">${p.planName}</td>
+                    <td style="padding:10px 14px;font-size:12px;color:#64748B;">${p.createdByName || '—'}</td>
+                    <td style="padding:10px 14px;font-size:12px;color:#94A3B8;">${p.createdAt || '—'}</td>
+                </tr>`).join('');
+        })
+        .catch(() => {
+            document.getElementById(`planlist-${id}`).innerHTML =
+                '<tr><td colspan="4" style="padding:12px 36px;color:#EF4444;font-size:12px;">Failed to load</td></tr>';
+        });
+}
+
+// ── Plan form ──
+let openPlanId = null;
+
+function togglePlanForm(btn, id) {
+    const planRow = document.getElementById(`planrow-${id}`);
+    const isOpen  = planRow.style.display !== 'none';
+
+    if (openPlanId && openPlanId !== id) {
+        document.getElementById(`planrow-${openPlanId}`).style.display = 'none';
+        const prevBtn = document.getElementById(`planbtn-${openPlanId}`);
+        if (prevBtn) prevBtn.classList.remove('open');
+        document.getElementById(`plantext-${openPlanId}`).value = '';
+    }
+
+    planRow.style.display = isOpen ? 'none' : '';
+    btn.classList.toggle('open', !isOpen);
+    openPlanId = isOpen ? null : id;
+
+    if (!isOpen) {
+        setTimeout(() => document.getElementById(`plantext-${id}`)?.focus(), 80);
+    }
+}
+
+function closePlanForm(id) {
+    document.getElementById(`planrow-${id}`).style.display = 'none';
+    const btn = document.getElementById(`planbtn-${id}`);
+    if (btn) btn.classList.remove('open');
+    document.getElementById(`plantext-${id}`).value = '';
+    openPlanId = null;
+}
+
+function submitPlan(challengeId) {
+    const textarea = document.getElementById(`plantext-${challengeId}`);
+    const text     = textarea.value.trim();
+    if (!text) { textarea.focus(); return; }
+
+    const saveBtn = textarea.closest('.plan-form-inner').querySelector('.btn-primary-dt');
+    saveBtn.disabled  = true;
+    saveBtn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;"></span> Saving...';
+
+    fetch(`/challenges/${challengeId}/plans`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ planName: text })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closePlanForm(challengeId);
+            delete loadedPlans[challengeId];
+            // Reload page to update plan count badge
+            location.reload();
+        } else {
+            saveBtn.disabled  = false;
+            saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Plan';
+            alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(() => {
+        saveBtn.disabled  = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> Save Plan';
+        alert('Network error — plan not saved.');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    filteredRows = getAllRows();
+    renderTable();
+});
+</script>
+{% endblock %}

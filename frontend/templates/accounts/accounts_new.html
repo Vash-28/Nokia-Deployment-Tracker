@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}New Account{% endblock %}
+{% block content %}
+<div style="padding:28px 32px; max-width:640px;">
+  <div style="margin-bottom:24px;">
+    <a href="/accounts" style="font-size:13px; color:#64748B; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+      <i class="bi bi-arrow-left"></i> Back to Accounts
+    </a>
+  </div>
+  <div style="background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:28px 32px;">
+    <h1 style="font-size:18px; font-weight:700; color:#0F172A; margin:0 0 6px;">New Account</h1>
+    <p style="font-size:13px; color:#64748B; margin:0 0 24px;">Add a new account to the system</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div style="padding:10px 14px; border-radius:6px; margin-bottom:16px; font-size:13px;
+                  background:{{ '#DCFCE7' if cat=='success' else '#FEE2E2' }};
+                  color:{{ '#166534' if cat=='success' else '#991B1B' }};">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <form method="POST" action="/accounts/new">
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Account Name <span style="color:#EF4444;">*</span></label>
+        <input name="accountName" required type="text" placeholder="e.g. Nokia India"
+          style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:24px;">
+        <label style="display:block; font-size:13px; font-weight:500; color:#374151; margin-bottom:6px;">Account Details</label>
+        <textarea name="account_details" rows="3" placeholder="Optional details about this account"
+          style="width:100%; padding:9px 12px; border:1px solid #D1D5DB; border-radius:6px; font-size:13px; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button type="submit" style="background:#1A56DB; color:#fff; border:none; padding:9px 20px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer;">Create Account</button>
+        <a href="/accounts" style="background:#fff; color:#374151; border:1px solid #D1D5DB; padding:9px 20px; border-radius:6px; font-size:13px; font-weight:500; text-decoration:none; display:inline-flex; align-items:center;">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

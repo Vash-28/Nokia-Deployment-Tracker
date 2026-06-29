@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Opportunities</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <style>
+        /* ── PALETTE ────────────────────────────────────────────
+           #0A1931  deep navy     (headings, sidebar active, text)
+           #1A3D63  mid navy      (primary buttons, accents)
+           #4A7FA7  steel blue    (secondary accents, icons)
+           #B3CFE5  soft sky      (borders, muted fills)
+           #F6FAFD  near-white    (page background)
+        ──────────────────────────────────────────────────────── */
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            background: #F6FAFD;
+            color: #0A1931;
+            font-size: 14px;
+        }
+
+        .app-layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+        .content { flex: 1; min-width: 0; padding: 32px 36px; }
+
+        /* ── PAGE HEADER ─────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+        .page-header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0A1931;
+            letter-spacing: -0.5px;
+        }
+        .page-header p {
+            font-size: 13px;
+            color: #4A7FA7;
+            margin-top: 4px;
+        }
+        .btn-add {
+            background: #1A3D63;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            text-decoration: none;
+            letter-spacing: 0.02em;
+            transition: background 0.15s;
+        }
+        .btn-add:hover { background: #0A1931; color: #fff; }
+
+        /* ── KPI STRIP ───────────────────────────────────────── */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi {
+            background: #fff;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 12px;
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .kpi-icon {
+            width: 42px; height: 42px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .kpi-icon.total  { background: #EBF3FA; color: #1A3D63; }
+        .kpi-icon.init   { background: #EEF2FF; color: #4338CA; }
+        .kpi-icon.active { background: #ECFDF5; color: #059669; }
+        .kpi-icon.done   { background: #F0F6FF; color: #4A7FA7; }
+        .kpi-num { font-size: 26px; font-weight: 700; color: #0A1931; line-height: 1; }
+        .kpi-lbl { font-size: 11px; font-weight: 600; color: #4A7FA7; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
+
+        /* ── FILTER BAR ──────────────────────────────────────── */
+        .filter-bar {
+            background: #fff;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 320px;
+        }
+        .search-wrap i {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            color: #4A7FA7;
+            font-size: 14px;
+        }
+        .search-input {
+            width: 100%;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 8px;
+            padding: 8px 12px 8px 34px;
+            font-size: 13px;
+            color: #0A1931;
+            background: #F6FAFD;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .search-input:focus { border-color: #1A3D63; background: #fff; }
+        .filter-select {
+            border: 1.5px solid #B3CFE5;
+            border-radius: 8px;
+            padding: 8px 32px 8px 12px;
+            font-size: 13px;
+            color: #0A1931;
+            background: #F6FAFD url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%234A7FA7' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat right 10px center;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .filter-select:focus { border-color: #1A3D63; }
+        .btn-clear {
+            border: 1.5px solid #B3CFE5;
+            background: #F6FAFD;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            color: #4A7FA7;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-clear:hover { border-color: #4A7FA7; color: #0A1931; }
+        .btn-export {
+            border: 1.5px solid #B3CFE5;
+            background: #fff;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #1A3D63;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+            transition: all 0.15s;
+        }
+        .btn-export:hover { background: #EBF3FA; border-color: #4A7FA7; }
+
+        /* ── STATUS PILLS ────────────────────────────────────── */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        .pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .pill.initialized { background: #EEF2FF; color: #4338CA; }
+        .pill.initialized .pill-dot { background: #4338CA; }
+        .pill.ongoing { background: #ECFDF5; color: #059669; }
+        .pill.ongoing .pill-dot { background: #059669; }
+        .pill.completed { background: #EBF3FA; color: #1A3D63; }
+        .pill.completed .pill-dot { background: #4A7FA7; }
+
+        /* ── MAIN TABLE CARD ─────────────────────────────────── */
+        .table-card {
+            background: #fff;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .table-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 22px;
+            border-bottom: 1.5px solid #EBF3FA;
+        }
+        .table-card-header span { font-size: 13px; font-weight: 600; color: #1A3D63; }
+        .table-card-header small { font-size: 12px; color: #4A7FA7; margin-left: 8px; font-weight: 400; }
+
+        /* DataTable overrides */
+        table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+        table.dataTable thead th {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #4A7FA7;
+            padding: 13px 16px !important;
+            background: #F6FAFD;
+            border-bottom: 1.5px solid #B3CFE5 !important;
+            border-top: none !important;
+            white-space: nowrap;
+        }
+        table.dataTable thead th:before,
+        table.dataTable thead th:after { display: none; }
+        table.dataTable thead th.sortable-col { cursor: pointer; }
+        table.dataTable thead th.sortable-col:hover { color: #1A3D63; }
+
+        /* Row striping by status */
+        table.dataTable tbody tr { cursor: pointer; transition: background 0.12s; }
+        table.dataTable tbody tr.row-initialized { border-left: 3px solid #4338CA; }
+        table.dataTable tbody tr.row-ongoing     { border-left: 3px solid #059669; }
+        table.dataTable tbody tr.row-completed   { border-left: 3px solid #4A7FA7; }
+
+        table.dataTable tbody tr:hover td { background: #EBF3FA !important; }
+        table.dataTable tbody td {
+            font-size: 13px;
+            color: #0A1931;
+            padding: 14px 16px !important;
+            border-bottom: 1px solid #EBF3FA !important;
+            vertical-align: middle;
+        }
+        table.dataTable tbody tr:last-child td { border-bottom: none !important; }
+
+        .dataTables_wrapper .dataTables_filter { display: none; }
+        .dataTables_wrapper .dataTables_info { font-size: 12px; color: #4A7FA7; padding: 12px 22px; }
+        .dataTables_wrapper .dataTables_paginate { padding: 12px 22px; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-size: 12px !important;
+            border-radius: 6px !important;
+            border: none !important;
+            color: #4A7FA7 !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: #1A3D63 !important;
+            color: #fff !important;
+            border: none !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current) {
+            background: #EBF3FA !important;
+            color: #0A1931 !important;
+            border: none !important;
+        }
+        .dataTables_wrapper .dataTables_length { display: none; }
+
+        /* EXPAND BUTTON */
+        .expand-btn {
+            width: 26px; height: 26px;
+            border-radius: 6px;
+            border: 1.5px solid #B3CFE5;
+            background: #F6FAFD;
+            color: #4A7FA7;
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 11px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .expand-btn:hover { background: #EBF3FA; border-color: #4A7FA7; color: #1A3D63; }
+        .expand-btn.open { background: #1A3D63; border-color: #1A3D63; color: #fff; transform: rotate(180deg); }
+
+        /* ── EXPANDED PO SUB-TABLE ───────────────────────────── */
+        .sub-row td { padding: 0 !important; background: #F6FAFD !important; border-bottom: 2px solid #B3CFE5 !important; }
+        .sub-panel { padding: 20px 22px 22px; }
+        .sub-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .sub-panel-header h4 {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #1A3D63;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .sub-panel-header h4 i { color: #4A7FA7; }
+
+        .po-table-wrap {
+            background: #fff;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        table.po-table { width: 100%; border-collapse: collapse; }
+        table.po-table thead th {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #4A7FA7;
+            padding: 10px 16px;
+            background: #EBF3FA;
+            border-bottom: 1.5px solid #B3CFE5;
+            white-space: nowrap;
+        }
+        table.po-table tbody td {
+            font-size: 12px;
+            color: #0A1931;
+            padding: 11px 16px;
+            border-bottom: 1px solid #F6FAFD;
+            vertical-align: middle;
+        }
+        table.po-table tbody tr:last-child td { border-bottom: none; }
+        table.po-table tbody tr:hover td { background: #EBF3FA; }
+
+        .po-name-cell { font-weight: 600; color: #1A3D63; }
+        .balance-cell { font-weight: 700; }
+        .balance-cell.surplus { color: #059669; }
+        .balance-cell.deficit { color: #DC2626; }
+
+        .btn-po-detail {
+            background: #EBF3FA;
+            color: #1A3D63;
+            border: 1.5px solid #B3CFE5;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-po-detail:hover { background: #1A3D63; color: #fff; border-color: #1A3D63; }
+
+        /* ── PROGRESS BAR ────────────────────────────────────── */
+        .progress-section { padding: 14px 16px; border-top: 1.5px solid #EBF3FA; }
+        .progress-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .progress-label { font-size: 11px; font-weight: 700; color: #1A3D63; text-transform: uppercase; letter-spacing: 0.06em; }
+        .progress-stats { display: flex; gap: 18px; }
+        .progress-stat { font-size: 11px; color: #4A7FA7; }
+        .progress-stat strong { color: #0A1931; }
+        .progress-track {
+            height: 10px;
+            background: #EBF3FA;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #1A3D63, #4A7FA7);
+            transition: width 0.6s ease;
+            position: relative;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 0 5px 5px 0;
+        }
+        .progress-pct {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1A3D63;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        /* ── EMPTY PO STATE ─────────────────────────────────── */
+        .po-empty {
+            text-align: center;
+            padding: 28px;
+            color: #4A7FA7;
+            font-size: 12px;
+        }
+        .po-empty i { font-size: 22px; display: block; margin-bottom: 6px; color: #B3CFE5; }
+
+        /* ── LOADING SPINNER ─────────────────────────────────── */
+        .po-loading { text-align: center; padding: 20px; color: #4A7FA7; font-size: 12px; }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #B3CFE5; border-top-color: #1A3D63; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── OPP TOTAL VALUE ─────────────────────────────────── */
+        .val-cell { font-weight: 600; color: #0A1931; }
+        .date-cell { color: #4A7FA7; font-size: 12px; }
+        .name-cell { font-weight: 600; color: #0A1931; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Pagination area */
+        .dt-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 22px 14px; border-top: 1.5px solid #EBF3FA; }
+    </style>
+</head>
+<body>
+
+{% include 'navbar.html' %}
+
+<div class="app-layout">
+    {% include 'sidebar.html' %}
+
+    <div class="content">
+
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+            <div>
+                <h1>Opportunities</h1>
+                <p>Track deals across accounts, customers and business units.</p>
+            </div>
+            <a href="/opportunities/new" class="btn-add">
+                <i class="bi bi-plus-lg"></i> Add Opportunity
+            </a>
+        </div>
+
+        <!-- KPI STRIP -->
+        <div class="kpi-strip">
+            <div class="kpi">
+                <div class="kpi-icon total"><i class="bi bi-briefcase"></i></div>
+                <div>
+                    <div class="kpi-num">{{ total }}</div>
+                    <div class="kpi-lbl">Total</div>
+                </div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-icon init"><i class="bi bi-hourglass-top"></i></div>
+                <div>
+                    <div class="kpi-num">{{ initialized }}</div>
+                    <div class="kpi-lbl">Initialized</div>
+                </div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-icon active"><i class="bi bi-lightning-charge"></i></div>
+                <div>
+                    <div class="kpi-num">{{ ongoing }}</div>
+                    <div class="kpi-lbl">Ongoing</div>
+                </div>
+            </div>
+            <div class="kpi">
+                <div class="kpi-icon done"><i class="bi bi-check2-circle"></i></div>
+                <div>
+                    <div class="kpi-num">{{ completed }}</div>
+                    <div class="kpi-lbl">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="filter-bar">
+            <div class="search-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" class="search-input" id="opp-search" placeholder="Search opportunity, customer…" oninput="applyFilters()">
+            </div>
+            <select class="filter-select" id="filter-account" onchange="applyFilters()">
+                <option value="">All Accounts</option>
+                {% for acc in accounts %}
+                <option value="{{ acc }}">{{ acc }}</option>
+                {% endfor %}
+            </select>
+            <select class="filter-select" id="filter-division" onchange="applyFilters()">
+                <option value="">All Divisions</option>
+                {% for div in divisions %}
+                <option value="{{ div }}">{{ div }}</option>
+                {% endfor %}
+            </select>
+            <select class="filter-select" id="filter-status" onchange="applyFilters()">
+                <option value="">All Status</option>
+                <option value="Initialized">Initialized</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <button class="btn-clear" onclick="clearFilters()"><i class="bi bi-x"></i> Clear</button>
+            <button class="btn-export" onclick="exportTable()">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </button>
+        </div>
+
+        <!-- MAIN TABLE CARD -->
+        <div class="table-card">
+            <div class="table-card-header">
+                <span>Opportunities <small id="opp-count-label">{{ opportunities | length }} records</small></span>
+            </div>
+
+            <table id="oppTable" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        <th style="width:40px"></th><!-- expand toggle -->
+                        <th>#</th>
+                        <th>Opportunity</th>
+                        <th>Account</th>
+                        <th>Customer</th>
+                        <th>Division</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Total Value (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for opp in opportunities %}
+                    {% set st = opp.status | lower %}
+                    <tr class="opp-row row-{{ st }}"
+                        data-opp-id="{{ opp.opportunityID }}"
+                        data-status="{{ opp.status }}"
+                        data-account="{{ opp.account_name or '' }}"
+                        data-division="{{ opp.divisionName or '' }}">
+                        <td onclick="event.stopPropagation()">
+                            <button class="expand-btn" id="expand-{{ opp.opportunityID }}"
+                                onclick="toggleSubRow({{ opp.opportunityID }}, this)">
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                        </td>
+                        <td style="color:#4A7FA7;font-size:12px">{{ opp.opportunityID }}</td>
+                        <td class="name-cell" title="{{ opp.opportunityName }}">{{ opp.opportunityName }}</td>
+                        <td>{{ opp.account_name or '—' }}</td>
+                        <td>{{ opp.customerName or '—' }}</td>
+                        <td>{{ opp.divisionName or '—' }}</td>
+                        <td class="date-cell">{{ opp.startDate.strftime('%d %b %Y') if opp.startDate else '—' }}</td>
+                        <td class="date-cell">{{ opp.endDate.strftime('%d %b %Y') if opp.endDate else 'Ongoing' }}</td>
+                        <td class="val-cell">{{ "{:,.0f}".format(opp.totalValue or 0) }}</td>
+                        <td>
+                            <span class="pill {{ st }}">
+                                <span class="pill-dot"></span>
+                                {{ opp.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    <!-- SUB ROW placeholder (inserted dynamically) -->
+                    {% endfor %}
+                </tbody>
+            </table>
+
+
+        </div>
+
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// ═══════════════════════════════
+// DATATABLE SETUP
+// ═══════════════════════════════
+let dt;
+
+$(document).ready(function() {
+    dt = $('#oppTable').DataTable({
+        pageLength: 15,
+        order: [[1, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [0, 9] },
+            { searchable: false, targets: [0, 6, 7, 8, 9] }
+        ],
+        drawCallback: function() {
+            const info = this.api().page.info();
+            document.getElementById('opp-count-label').textContent =
+                `${info.recordsDisplay} of ${info.recordsTotal} records`;
+        }
+    });
+});
+
+// ═══════════════════════════════
+// CUSTOM FILTER ENGINE
+// ═══════════════════════════════
+$.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    // FIX: use settings to get the TR node — dt is not yet defined when this is registered
+    const tableId = settings.sTableId;
+    if (tableId !== 'oppTable') return true; // only filter our table
+
+    const tr = settings.aoData[dataIndex].nTr;
+    if (!tr) return true; // safety: if row not yet rendered, show it
+
+    const account  = document.getElementById('filter-account').value.toLowerCase();
+    const division = document.getElementById('filter-division').value.toLowerCase();
+    const status   = document.getElementById('filter-status').value;
+    const search   = document.getElementById('opp-search').value.toLowerCase();
+
+    const rowAccount  = (tr.getAttribute('data-account')  || '').toLowerCase();
+    const rowDivision = (tr.getAttribute('data-division') || '').toLowerCase();
+    const rowStatus   =  tr.getAttribute('data-status')   || '';
+
+    if (account  && rowAccount.indexOf(account)   === -1) return false;
+    if (division && rowDivision.indexOf(division) === -1) return false;
+    if (status   && rowStatus !== status)                 return false;
+    if (search) {
+        const rowText = (data[2] + ' ' + data[4]).toLowerCase(); // opp name + customer
+        if (rowText.indexOf(search) === -1) return false;
+    }
+    return true;
+});
+
+function applyFilters() { dt.draw(); }
+function clearFilters() {
+    ['filter-account','filter-division','filter-status'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('opp-search').value = '';
+    dt.draw();
+}
+
+// ═══════════════════════════════
+// EXPAND / COLLAPSE SUB-ROW
+// ═══════════════════════════════
+function toggleSubRow(oppID, btn) {
+    const $btn = $(btn);
+    const dtRow = dt.row($btn.closest('tr'));
+
+    // Use the 'open' class on the button as the single source of truth for state
+    if ($btn.hasClass('open')) {
+        // COLLAPSE
+        dtRow.child.hide();
+        $btn.removeClass('open');
+    } else {
+        // EXPAND — show loading immediately
+        const $loading = $('<tr><td colspan="10"><div class="sub-panel"><div class="po-loading"><span class="spinner"></span>Loading POs…</div></div></td></tr>');
+        dtRow.child($loading).show();
+        $btn.addClass('open');
+
+        fetch(`/opportunities/${oppID}/pos`)
+            .then(r => {
+                if (!r.ok) throw new Error('Network error');
+                return r.json();
+            })
+            .then(pos => {
+                const $html = $(buildSubPanel(pos, oppID));
+                dtRow.child($html).show();
+            })
+            .catch(() => {
+                const $err = $('<tr><td colspan="10"><div class="sub-panel"><div class="po-empty"><i class="bi bi-exclamation-circle"></i> Failed to load POs. Check the route is registered.</div></div></td></tr>');
+                dtRow.child($err).show();
+            });
+    }
+}
+
+function buildSubPanel(pos, oppID) {
+    // DataTables child() accepts a jQuery <tr> element — we wrap our content in a tr>td
+    if (!pos || pos.length === 0) {
+        return `<tr class="sub-row"><td colspan="10"><div class="sub-panel">
+            <div class="po-empty">
+                <i class="bi bi-inbox"></i>
+                No POs linked to this opportunity yet.<br>
+                <a href="/po/new" style="color:#1A3D63;font-weight:600;font-size:12px;text-decoration:none;margin-top:8px;display:inline-block">+ Add a PO</a>
+            </div>
+        </div></td></tr>`;
+    }
+
+    // Aggregate totals
+    let totalOppQty = 0, totalDeployed = 0;
+    pos.forEach(po => {
+        totalOppQty  += Number(po.totalQty  || 0);
+        totalDeployed += Number(po.actualQty || 0);
+    });
+    const totalBalance = totalOppQty - totalDeployed;
+    const pct = totalOppQty > 0 ? Math.min(100, Math.round(totalDeployed / totalOppQty * 100)) : 0;
+    const fillColor = pct >= 80 ? '#059669' : pct >= 40 ? '#1A3D63' : '#4A7FA7';
+
+    const rows = pos.map(po => {
+        const poQty  = Number(po.totalQty  || 0);
+        const actual = Number(po.actualQty || 0);
+        const bal    = poQty - actual;
+        const balClass = bal < 0 ? 'deficit' : bal > 0 ? 'surplus' : '';
+        return `<tr>
+            <td class="po-name-cell">${po.pOName}</td>
+            <td>${poQty.toLocaleString()}</td>
+            <td>${poQty.toLocaleString()}</td>
+            <td>${actual.toLocaleString()}</td>
+            <td class="balance-cell ${balClass}">${bal >= 0 ? bal.toLocaleString() : '(' + Math.abs(bal).toLocaleString() + ')'}</td>
+            <td><a href="/po/${po.poID}" class="btn-po-detail"><i class="bi bi-arrow-right"></i> View PO</a></td>
+        </tr>`;
+    }).join('');
+
+    return `<tr class="sub-row"><td colspan="10"><div class="sub-panel">
+        <div class="sub-panel-header">
+            <h4><i class="bi bi-file-earmark-text"></i> POs under this Opportunity</h4>
+            <a href="/po/new?opp=${oppID}" style="font-size:11px;color:#1A3D63;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px">
+                <i class="bi bi-plus"></i> Add PO
+            </a>
+        </div>
+        <div class="po-table-wrap">
+            <table class="po-table">
+                <thead>
+                    <tr>
+                        <th>PO Name</th>
+                        <th>Opp. Qty</th>
+                        <th>PO Qty</th>
+                        <th>Deployed</th>
+                        <th>Balance</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="progress-section">
+                <div class="progress-row">
+                    <div class="progress-label"><i class="bi bi-bar-chart-fill" style="margin-right:5px;color:#4A7FA7"></i>Opportunity Progress</div>
+                    <div class="progress-stats">
+                        <div class="progress-stat">Deployed: <strong>${totalDeployed.toLocaleString()}</strong></div>
+                        <div class="progress-stat">Total: <strong>${totalOppQty.toLocaleString()}</strong></div>
+                        <div class="progress-stat">Balance: <strong style="color:${totalBalance < 0 ? '#DC2626' : '#059669'}">${totalBalance.toLocaleString()}</strong></div>
+                    </div>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,${fillColor},${fillColor}cc)"></div>
+                </div>
+                <div class="progress-pct">${pct}% deployed</div>
+            </div>
+        </div>
+    </div></td></tr>`;
+}
+
+// ═══════════════════════════════
+// EXPORT EXCEL
+// ═══════════════════════════════
+function exportTable() {
+    const rows = [['ID','Opportunity','Account','Customer','Division','Start Date','End Date','Total Value','Status']];
+    dt.rows({ search: 'applied' }).data().each(function(row, i) {
+        const $tr = $(dt.row(i).node());
+        rows.push([
+            $tr.data('opp-id'),
+            row[2], row[3], row[4], row[5], row[6], row[7],
+            row[8].replace(/,/g,''),
+            $tr.data('status')
+        ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Opportunities');
+    XLSX.writeFile(wb, 'Opportunities_Export.xlsx');
+}
+</script>
+
+</body>
+</html>
