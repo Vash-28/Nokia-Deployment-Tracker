@@ -1,5 +1,4 @@
-# Nokia-Deployment-Tracker
-# Deployment Tracker Redesign
+# Nokia-Deployment-Tracker Redesign
 
 A full-stack web application developed during my Summer Internship at Nokia to redesign and modernize the internal Deployment Tracker portal. The system streamlines opportunity, purchase order, and milestone management through an intuitive workflow-driven interface, role-based access control, and enhanced deployment tracking capabilities.
 
