@@ -167,9 +167,9 @@ Database
 
 ---
 
-## Internship Context
+## My Role
 
-This project was developed as part of my Summer Internship at Nokia, where I was responsible for understanding the existing Deployment Tracker, identifying usability and architectural challenges, and redesigning the system to improve user experience, efficiency, maintainability, and scalability.
+I was responsible for understanding the existing Deployment Tracker, identifying usability and architectural challenges, and redesigning and developing the system to improve user experience, efficiency, maintainability, and scalability.
 
 ---
 
